@@ -15,6 +15,7 @@ class NarrativeState(TypedDict):
     last_generated_content: str
     is_valid: bool
     plot_graph_data: dict
+    theory_type: str
 
 def planner_node(state: NarrativeState):
     """Suggests the next narrative node using the constraint engine."""
