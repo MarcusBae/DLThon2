@@ -1,0 +1,21 @@
+{
+  "narrative_node": {
+    "id": "string",
+    "name": "string",
+    "type": "propp | vogler",
+    "function_symbol": "string",
+    "description": "string",
+    "allowed_next": ["string"]
+  },
+  "character": {
+    "name": "string",
+    "role": "string",
+    "traits": ["string"],
+    "goals": ["string"]
+  },
+  "world_setting": {
+    "genre": "string",
+    "rules": ["string"],
+    "constants": {}
+  }
+}

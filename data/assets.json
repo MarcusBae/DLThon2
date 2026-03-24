@@ -1,0 +1,26 @@
+{
+  "characters": [
+    {
+      "name": "Hero",
+      "role": "Protagonist",
+      "traits": ["Brave", "Curious"],
+      "goals": ["Find the lost treasure"]
+    },
+    {
+      "name": "Shadow",
+      "role": "Villain",
+      "traits": ["Cunning", "Ambitious"],
+      "goals": ["Control the kingdom"]
+    }
+  ],
+  "world_setting": {
+    "genre": "Fantasy",
+    "rules": [
+      "Magic is rare and dangerous",
+      "Dragons are extinct"
+    ],
+    "constants": {
+      "time_setting": "Medieval"
+    }
+  }
+}

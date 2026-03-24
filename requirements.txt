@@ -1,0 +1,9 @@
+langgraph
+networkx
+ortools
+streamlit
+matplotlib
+openai
+ragas
+fpdf
+python-dotenv
