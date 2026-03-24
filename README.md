@@ -22,6 +22,13 @@ streamlit run main.py
 ```
 
 ## 🏗️ 아키텍처 (Class Diagram)
+### NarrativeConstraintSolver의 역할
+`NarrativeConstraintSolver`는 본 스토리 엔진의 **논리적 뼈대**를 담당하며, 다음과 같은 역할을 수행합니다.
+
+1. **내러티브 이론의 제약 조건화**: 프로프(Propp)의 31가지 민담 기능이나 보글러(Vogler)의 영웅의 여정 12단계와 같은 서사 이론을 공학적인 제약 조건(Constraints)으로 변환합니다.
+2. **유효한 시퀀스 생성**: Google OR-Tools (CP-SAT 솔버)를 사용하여, 설정된 이론적 규칙에 위배되지 않는 **타당한 이야기 흐름(Sequence)**을 자동으로 찾아내고 제안합니다.
+3. **결정론적 서사 가이드**: 무작위적인 문장 생성이 아니라, 인과관계가 검증된 서사의 마일스톤을 제시함으로써 이야기의 개연성을 확보합니다.
+
 * NarrativeConstraintSolver: 서사 제약 조건을 해결하는 핵심 엔진
 * NarrativeGraphManager: 내러티브 그래프(DAG)를 관리하는 모듈
 * ValidatorAgent: 서사적 일관성을 검증하는 에이전트

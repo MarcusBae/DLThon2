@@ -5,5 +5,7 @@ streamlit
 matplotlib
 openai
 ragas
-fpdf
+fpdf2
 python-dotenv
+pypdf
+pdfplumber

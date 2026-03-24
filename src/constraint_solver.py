@@ -1,21 +1,27 @@
 # constraint_solver.py
-"""Logic-Constraint Engine using Google OR-Tools (CP-SAT)."""
+"""Google OR-Tools (CP-SAT)를 사용한 논리 제약 엔진."""
 
 from ortools.sat.python import cp_model
 from src.data_loader import load_theory
 
 class NarrativeConstraintSolver:
+    """
+    서사 생성을 위한 논리 기반 접근 방식을 제공합니다.
+    Google OR-Tools(CP-SAT)를 사용하여 미리 정의된 전이 규칙 및 제약 조건에 따라
+    프로프(Propp)의 서사 기능 또는 보글러(Vogler)의 서사 단계의 유효한 시퀀스를 찾습니다.
+    """
     def __init__(self, theory_type="propp"):
         self.theory_data = load_theory()
         self.theory_type = theory_type
-        self.nodes = self.theory_data.get(f"{theory_type}_functions" if theory_type == "propp" else f"{theory_type}_stages", [])
+        self.nodes = self.theory_data.get(
+            f"{theory_type}_functions" if theory_type == "propp" else f"{theory_type}_stages", [])
         self.id_to_index = {node["id"]: i for i, node in enumerate(self.nodes)}
         self.index_to_id = {i: node["id"] for i, node in enumerate(self.nodes)}
 
     def get_valid_next_ids(self, current_node_id: str):
-        """Returns a list of valid next node IDs based on the theory."""
+        """이론에 따라 유효한 다음 노드 ID 목록을 반환합니다."""
         if not current_node_id:
-            # If no current node, start with the first ones
+            # 현재 노드가 없으면 첫 번째 노드부터 시작
             return [n["id"] for n in self.nodes if n["id"].endswith("01")]
         
         current_node = next((n for n in self.nodes if n["id"] == current_node_id), None)
