@@ -17,7 +17,7 @@ def load_schema():
     return _load_json("schema.json")
 
 def load_theory():
-    return _load_json("theory.json")
+    return _load_json("theory_plot.json")
 
 def load_assets():
     return _load_json("assets.json")

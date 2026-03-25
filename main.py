@@ -25,7 +25,7 @@ st.markdown("""
 # Sidebar settings
 with st.sidebar:
     st.header("⚙️ Settings")
-    theory_type = st.selectbox("Narrative Theory", ["propp", "vogler"], index=0)
+    theory_type = st.selectbox("Narrative Theory", ["THEORY_4CUT_COMIC", "THEORY_PROPP_VOGLER_HYBRID"], index=1)
     st.divider()
     st.subheader("Writer's Palette")
     genre = st.text_input("Genre", "Fantasy")
@@ -45,12 +45,21 @@ with col1:
             start_node_id = mapper.map_input_to_node(user_idea)
             
             # 2. Setup initial state
+            from langchain_core.messages import HumanMessage
             initial_state = {
-                "current_node_id": None, # Start from None to let planner decide first node if needed
-                "history": [],
-                "world_constants": {"genre": genre, "rules": world_rules},
-                "characters": [],
-                "theory_type": theory_type
+                "messages": [HumanMessage(content=user_idea)],
+                "current_section": "Section 01의 step_num:1", 
+                "is_section_complete": False,
+                "idea_note": [],
+                "master_data": {
+                    "characters": [], 
+                    "worldview": {"genre": genre, "rules": world_rules}, 
+                    "plot_nodes": [start_node_id],
+                    "theory_type": theory_type
+                },
+                "validation_status": {},
+                "next_node": "history",
+                "missing_info": []
             }
             
             # 3. Compile and Run LangGraph
@@ -58,16 +67,17 @@ with col1:
             result = workflow.invoke(initial_state)
             
             st.session_state.current_result = result
-            st.success(f"Milestone '{result['current_node_id']}' generated!")
+            st.success(f"Milestone '{start_node_id}' generated!")
 
     if 'current_result' in st.session_state:
         res = st.session_state.current_result
-        st.subheader(f"Current Milestone: {res['current_node_id']}")
-        st.info(res['last_generated_content'])
+        st.subheader(f"Current Milestone: {res.get('current_section', 'Unknown')}")
+        last_msg = res['messages'][-1].content if 'messages' in res and res['messages'] else ""
+        st.info(last_msg)
         
         st.write("---")
         st.write("### Story History")
-        for i, node_id in enumerate(res['history']):
+        for i, node_id in enumerate(res.get('master_data', {}).get('plot_nodes', [])):
             st.code(f"Step {i+1}: {node_id}")
 
 with col2:
@@ -75,7 +85,7 @@ with col2:
     if 'current_result' in st.session_state:
         # Construct graph data for visualization
         res = st.session_state.current_result
-        history = res['history']
+        history = res.get('master_data', {}).get('plot_nodes', [])
         
         # Build simple graph for visualization
         manager = NarrativeGraphManager()

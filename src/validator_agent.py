@@ -4,7 +4,7 @@
 from src.constraint_solver import NarrativeConstraintSolver
 
 class ValidatorAgent:
-    def __init__(self, theory_type="propp"):
+    def __init__(self, theory_type="THEORY_PROPP_VOGLER_HYBRID"):
         self.solver = NarrativeConstraintSolver(theory_type=theory_type)
 
     def validate_transition(self, from_id: str, to_id: str) -> bool:
@@ -21,6 +21,6 @@ class ValidatorAgent:
         return holes
 
 if __name__ == "__main__":
-    validator = ValidatorAgent(theory_type="propp")
-    print("P01 -> P02 Valid?", validator.validate_transition("P01", "P02"))
-    print("P01 -> P04 Valid?", validator.validate_transition("P01", "P04"))
+    validator = ValidatorAgent(theory_type="THEORY_4CUT_COMIC")
+    print("4CUT_01_INTRO -> 4CUT_02_DEVELOPMENT Valid?", validator.validate_transition("4CUT_01_INTRO", "4CUT_02_DEVELOPMENT"))
+    print("4CUT_01_INTRO -> 4CUT_04_CONCLUSION Valid?", validator.validate_transition("4CUT_01_INTRO", "4CUT_04_CONCLUSION"))

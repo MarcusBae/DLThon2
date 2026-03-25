@@ -10,25 +10,30 @@ class NarrativeConstraintSolver:
     Google OR-Tools(CP-SAT)를 사용하여 미리 정의된 전이 규칙 및 제약 조건에 따라
     프로프(Propp)의 서사 기능 또는 보글러(Vogler)의 서사 단계의 유효한 시퀀스를 찾습니다.
     """
-    def __init__(self, theory_type="propp"):
+    def __init__(self, theory_type="THEORY_PROPP_VOGLER_HYBRID"):
         self.theory_data = load_theory()
         self.theory_type = theory_type
-        self.nodes = self.theory_data.get(
-            f"{theory_type}_functions" if theory_type == "propp" else f"{theory_type}_stages", [])
-        self.id_to_index = {node["id"]: i for i, node in enumerate(self.nodes)}
-        self.index_to_id = {i: node["id"] for i, node in enumerate(self.nodes)}
+        self.nodes = []
+        for theory in self.theory_data.get("plot_theories", []):
+            if theory.get("theory_id") == theory_type:
+                self.nodes = theory.get("milestones", [])
+                break
+        self.id_to_index = {node["milestone_id"]: i for i, node in enumerate(self.nodes)}
+        self.index_to_id = {i: node["milestone_id"] for i, node in enumerate(self.nodes)}
 
     def get_valid_next_ids(self, current_node_id: str):
         """이론에 따라 유효한 다음 노드 ID 목록을 반환합니다."""
         if not current_node_id:
             # 현재 노드가 없으면 첫 번째 노드부터 시작
-            return [n["id"] for n in self.nodes if n["id"].endswith("01")]
-        
-        current_node = next((n for n in self.nodes if n["id"] == current_node_id), None)
-        if not current_node:
+            if self.nodes:
+                return [self.nodes[0]["milestone_id"]]
             return []
         
-        return current_node.get("allowed_next", [])
+        current_idx = self.id_to_index.get(current_node_id)
+        if current_idx is None or current_idx + 1 >= len(self.nodes):
+            return []
+        
+        return [self.nodes[current_idx + 1]["milestone_id"]]
 
     def solve_sequence(self, length=5):
         """Example: Use CP-SAT to find a valid sequence of a certain length."""
@@ -83,6 +88,6 @@ class NarrativeConstraintSolver:
         return []
 
 if __name__ == "__main__":
-    solver = NarrativeConstraintSolver(theory_type="propp")
-    print("Valid Next for P01:", solver.get_valid_next_ids("P01"))
+    solver = NarrativeConstraintSolver(theory_type="THEORY_4CUT_COMIC")
+    print("Valid Next for 4CUT_01_INTRO:", solver.get_valid_next_ids("4CUT_01_INTRO"))
     print("Found Sequence:", solver.solve_sequence(length=4))
