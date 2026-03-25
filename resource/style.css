@@ -1,0 +1,123 @@
+/* style.css */
+
+/* 상단 여백 축소 및 전체 공간 100% 활용 */
+.block-container {
+    padding-top: 3.5rem !important;
+    padding-bottom: 0rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+    max-width: 100% !important;
+}
+
+/* 
+   상단 고정 헤더 버튼 스타일링 
+   Streamlit의 기본 버튼 스타일을 제거하고 일반 텍스트 링크처럼 보이게 합니다.
+*/
+.main-header-wrapper {
+    position: fixed;
+    top: 12px;
+    left: 1.5rem;
+    z-index: 999999;
+}
+
+.main-header-wrapper div[data-testid="stButton"] button {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    color: inherit !important;
+    font-size: 1.35rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.5px !important;
+    box-shadow: none !important;
+}
+
+.main-header-wrapper div[data-testid="stButton"] button:hover {
+    color: #60a5fa !important;
+    background: transparent !important;
+}
+
+/* 툴팁이나 기타 요소가 클릭을 방해하지 않도록 함 */
+.stButton > button {
+    cursor: pointer;
+}
+
+/* Home Main View Styles */
+.home-spacer {
+    height: 3rem;
+}
+
+.home-title {
+    text-align: center;
+    font-weight: 800;
+}
+
+.home-subtitle {
+    text-align: center;
+    color: gray;
+    margin-bottom: 2rem;
+}
+
+.home-section-title {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.home-divider {
+    border: 0;
+    height: 1px;
+    background: #e0e0e0;
+    margin: 3rem 0;
+}
+
+.home-empty-msg {
+    text-align: center;
+    color: gray;
+    margin-bottom: 2rem;
+}
+
+.history-card-title {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.footer-text {
+    text-align: center;
+    color: gray;
+    font-size: 0.8rem;
+    margin-top: 2rem;
+    padding-bottom: 1rem;
+}
+
+/* Idea Start Form Styles */
+[data-testid="stForm"] input {
+    display: block;
+    text-align: center !important;
+}
+
+[data-testid="stForm"] input::placeholder {
+    text-align: center !important;
+}
+
+[data-testid="stForm"] button {
+    display: block;
+    background-color: #0d6efd !important;
+    color: white !important;
+    font-weight: 800 !important;
+    border: none !important;
+}
+
+[data-testid="stForm"] button:hover {
+    background-color: #0b5ed7 !important;
+}
+
+/* 
+ * ---------------------------------------------------------
+ * Button typography fixes
+ * ---------------------------------------------------------
+ */
+/* 메인 플롯 선택 버튼 및 모든 버튼이 한글 단어 단위(띄어쓰기)로만 줄바꿈되도록 설정 */
+.stButton button,
+[data-testid="stForm"] button {
+    word-break: keep-all !important;
+    overflow-wrap: break-word !important;
+}

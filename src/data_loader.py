@@ -14,15 +14,15 @@ def _load_json(filename: str):
         return json.load(f)
 
 def load_schema():
-    return _load_json("schema.json")
+    return _load_json(os.path.join("system", "schema.json"))
 
 def load_theory():
-    return _load_json("theory_plot.json")
+    return _load_json(os.path.join("theory", "theory_plot.json"))
 
 def load_assets():
-    return _load_json("assets.json")
+    return _load_json(os.path.join("user_data", "assets.json"))
 
 def load_episodes():
-    return _load_json("episodes.json")
+    return _load_json(os.path.join("user_data", "episodes.json"))
 
 # TODO: Add validation logic for each JSON structure

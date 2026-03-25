@@ -1,0 +1,52 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "narrative_theory_schema",
+    "description": "A single plot theory layout containing story milestones",
+    "type": "object",
+    "required": ["theory_id", "theory_name", "description", "milestones"],
+    "properties": {
+        "theory_id": {
+            "type": "string",
+            "description": "Unique uppercase identifier, e.g., THEORY_SAVE_THE_CAT"
+        },
+        "theory_name": {
+            "type": "string",
+            "description": "Human readable name of the theory, e.g., Save the Cat"
+        },
+        "description": {
+            "type": "string",
+            "description": "Summary explaining the core concept of this plot structure"
+        },
+        "milestones": {
+            "type": "array",
+            "description": "List of sequential story milestones / act nodes",
+            "items": {
+                "type": "object",
+                "required": ["milestone_id", "act", "title", "description", "mapped_functions"],
+                "properties": {
+                    "milestone_id": {
+                        "type": "string",
+                        "description": "Unique ID for this node, e.g., STC_01_SETUP"
+                    },
+                    "act": {
+                        "type": "string",
+                        "description": "The broad act categorization, typically '기', '승', '전', '결' or 'Act 1'"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Title of this milestone"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Instructions or events that occur in this structural beat"
+                    },
+                    "mapped_functions": {
+                        "type": "array",
+                        "description": "List of function tags or archetype codes mapped here, e.g., ['STC_DEBATE']",
+                        "items": { "type": "string" }
+                    }
+                }
+            }
+        }
+    }
+}

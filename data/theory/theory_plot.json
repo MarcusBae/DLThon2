@@ -1,0 +1,153 @@
+{
+  "plot_theories": [
+    {
+      "theory_id": "THEORY_4CUT_COMIC",
+      "theory_name": "4컷 만화 기승전결 기본 구조",
+      "description": "빠른 호흡의 4컷 만화, 인스타툰, 숏폼 콘텐츠에 적합한 직관적이고 간결한 기·승·전·결 서사 구조",
+      "milestones": [
+        {
+          "milestone_id": "4CUT_01_INTRO",
+          "act": "기",
+          "title": "발단 (도입)",
+          "description": "캐릭터와 현재의 상황, 혹은 일상적인 배경을 독자에게 제시합니다.",
+          "mapped_functions": [
+            "CUSTOM_INTRO",
+            "CUSTOM_DAILY_LIFE"
+          ]
+        },
+        {
+          "milestone_id": "4CUT_02_DEVELOPMENT",
+          "act": "승",
+          "title": "전개 (심화)",
+          "description": "1컷의 상황이 이어지며 갈등이 시작되거나, 특정한 행동/사건이 발생하여 호기심을 유발합니다.",
+          "mapped_functions": [
+            "CUSTOM_ACTION",
+            "CUSTOM_CONFLICT"
+          ]
+        },
+        {
+          "milestone_id": "4CUT_03_TURN",
+          "act": "전",
+          "title": "전환 (반전)",
+          "description": "이야기의 흐름이 꺾이는 지점입니다. 독자의 예상을 벗어나는 행동이나 위기가 발생하며 긴장감이 최고조에 달합니다.",
+          "mapped_functions": [
+            "CUSTOM_PLOT_TWIST",
+            "CUSTOM_CRISIS"
+          ]
+        },
+        {
+          "milestone_id": "4CUT_04_CONCLUSION",
+          "act": "결",
+          "title": "결말 (오치/펀치라인)",
+          "description": "반전에 대한 결과가 나타나며 에피소드가 마무리됩니다. 개그의 경우 웃음 포인트(펀치라인)가, 드라마의 경우 여운이 배치됩니다.",
+          "mapped_functions": [
+            "CUSTOM_PUNCHLINE",
+            "CUSTOM_RESOLUTION"
+          ]
+        }
+      ]
+    },
+    {
+      "theory_id": "THEORY_PROPP_VOGLER_HYBRID",
+      "theory_name": "Propp & Vogler Hybrid Theory",
+      "description": "프롭의 민담 형태론과 영웅의 12서사를 결합하여 장편 웹소설이나 정통 판타지에 적합한 4막 서사 구조론",
+      "milestones": [
+        {
+          "milestone_id": "ACT1_INTRO",
+          "act": "기",
+          "title": "일상과 모험의 소명",
+          "description": "평온한 환경에서 주인공 가족 중 누군가 부재하거나 금지(Interdiction)가 주어집니다. 금지가 위반되며 악당이 정찰과 기만을 통해 결핍(Lacking)을 유발합니다.",
+          "mapped_functions": [
+            "P01(부재)",
+            "P02(금기)",
+            "P03(위반)",
+            "P08(결핍 발생)"
+          ]
+        },
+        {
+          "milestone_id": "ACT2_JOURNEY",
+          "act": "승",
+          "title": "모험의 시작과 조력자",
+          "description": "불행을 인지한 영웅이 해결을 결심(Counteraction)하고 집을 떠납니다. 여정 중 증여자(Donor)를 만나 시험을 거친 후 마법의 수단이나 조력자를 얻습니다.",
+          "mapped_functions": [
+            "P09(중재)",
+            "P10(해결 결심)",
+            "P11(출발)",
+            "P12(증여자의 시험)",
+            "P14(마법의 수단 획득)"
+          ]
+        },
+        {
+          "milestone_id": "ACT3_CLIMAX",
+          "act": "전",
+          "title": "시련과 투쟁",
+          "description": "악당과 직접 맞서 싸우며(Struggle), 영웅은 상처나 표식(Branding)을 얻게 되지만 결국 승리(Victory)하고 초기의 결핍이 해소(Liquidation)됩니다.",
+          "mapped_functions": [
+            "P16(투쟁)",
+            "P17(표식)",
+            "P18(승리)",
+            "P19(결핍 해소)"
+          ]
+        },
+        {
+          "milestone_id": "ACT4_RETURN",
+          "act": "결",
+          "title": "귀환과 최종 보상",
+          "description": "가짜 영웅의 기만과 어려운 과제(Difficult task)에 직면하지만 이를 해결하고 정당한 인정을 받습니다. 악당은 처벌받고, 영웅은 변모하여 최종 보상을 얻습니다.",
+          "mapped_functions": [
+            "P25(어려운 과제)",
+            "P26(해결)",
+            "P30(악당의 처벌)",
+            "P31(최종 보상)"
+          ]
+        }
+      ]
+    },
+    {
+      "theory_id": "THEORY_SAVE_THE_CAT_WEBNOVEL",
+      "theory_name": "15화 분량 웹소설 특화 3막 구조",
+      "description": "속도감 있는 전개가 생명인 한국형 웹소설에 맞춰 블레이크 스나이더의 'Save the Cat' 비트 시트를 기-승-전-결 4개 핵심 마일스톤으로 극도로 압축하고 변형한 플롯 구조입니다.",
+      "milestones": [
+        {
+          "milestone_id": "STC_01_OPENING",
+          "act": "기",
+          "title": "오프닝 및 소명",
+          "description": "빙의/환생/회귀 등 강력한 훅(Hook)으로 시작하여, 즉시 주인공에게 거부할 수 없는 새로운 임무나 위기(소명)가 들이닥칩니다. 주인공의 압도적 재능이나 특성이 최초로 암시됩니다.",
+          "mapped_functions": [
+            "STC_OPENING",
+            "STC_CATALYST"
+          ]
+        },
+        {
+          "milestone_id": "STC_02_FUN_GAMES",
+          "act": "승",
+          "title": "B스토리 진입과 승승장구",
+          "description": "본격적인 세계관 진입. 조력자를 만나거나 새로운 던전/아카데미/회사 등에 적응하며 주인공만의 \"사이다\" 활약이 연속적으로 터집니다. 독자에게 장르적 쾌감을 100% 충족시켜 주는 구간입니다.",
+          "mapped_functions": [
+            "STC_FUN_AND_GAMES",
+            "STC_B_STORY"
+          ]
+        },
+        {
+          "milestone_id": "STC_03_ALL_LOST",
+          "act": "전",
+          "title": "모든 것을 잃은 순간",
+          "description": "압도적이었던 주인공조차 대비하지 못한 진정한 흑막이나 재앙이 닥칩니다. 가짜 패배를 경험하고 깊은 고뇌에 빠지지만, 주인공은 자신이 가진 본질(또는 시스템/능력)의 진정한 의미를 깨닫고 각성합니다.",
+          "mapped_functions": [
+            "STC_ALL_IS_LOST",
+            "STC_DARK_NIGHT"
+          ]
+        },
+        {
+          "milestone_id": "STC_04_FINALE",
+          "act": "결",
+          "title": "통쾌한 피날레",
+          "description": "A스토리(메인 갈등)와 B스토리(내적 관계망)가 결합되어 악당을 완벽하게 짓밟거나 최종 목적지에 도달합니다. 기존 세계가 부서지고 새로운 질서가 확립되며 깔끔한 카타르시스를 남깁니다.",
+          "mapped_functions": [
+            "STC_FINALE"
+          ]
+        }
+      ]
+    }
+  ]
+}

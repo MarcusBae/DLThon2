@@ -1,0 +1,56 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Creation_Workflow_Process_Schema",
+    "description": "에이전트가 사용자와 1:1 인터뷰 방식으로 스토리를 창작해 나가는 5단계 프로세스와 행동 지침을 정의하는 스키마",
+    "type": "object",
+    "required": ["agent_persona", "interaction_rules", "sections"],
+    "properties": {
+        "agent_persona": {
+            "type": "object",
+            "description": "에이전트의 기본 정체성과 역할",
+            "properties": {
+                "identity": { "type": "string" },
+                "domain_expertise": { "type": "array", "items": { "type": "string" } },
+                "core_role": { "type": "string" }
+            }
+        },
+        "interaction_rules": {
+            "type": "object",
+            "description": "사용자와 대화할 때 지켜야 할 절대 규칙",
+            "properties": {
+                "interview_style": { "type": "string", "description": "한 번에 하나의 질문만 던지는 Step-by-Step 방식" },
+                "feedback_method": { "type": "string", "description": "사용자 답변 분석, 요약 및 구조화 제안" },
+                "copyright_protection": { "type": "string", "description": "가이드 원문 노출 금지 및 저작권 보호 지침" },
+                "proactive_assistance": { "type": "string", "description": "사용자가 막막해할 때 먼저 구체적인 창작 예시 2~3개를 선제적으로 제안" }
+            }
+        },
+        "sections": {
+            "type": "array",
+            "description": "창작 프로세스 단계들",
+            "items": {
+                "type": "object",
+                "required": ["section_id", "title", "focus_area", "steps"],
+                "properties": {
+                    "section_id": { "type": "string" },
+                    "title": { "type": "string" },
+                    "focus_area": { "type": "string" },
+                    "steps": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "step_number": { "type": "integer" },
+                                "task_name": { "type": "string" },
+                                "agent_action": { "type": "string" },
+                                "concept_framework": { "type": "string" },
+                                "prerequisites": { "type": "array", "items": { "type": "string" } },
+                                "output_requirements": { "type": "array", "items": { "type": "string" } },
+                                "flexibility": { "type": "string", "enum": ["HIGH", "MEDIUM", "LOW"] }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

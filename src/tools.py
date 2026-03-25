@@ -48,12 +48,23 @@ class Worldview:
     rules: List[WorldRule]
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Worldview":
-        constants = [WorldConstant(**c) for c in data.get("constants", [])]
-        rules = [WorldRule(**r) for r in data.get("rules", [])]
+    def from_dict(cls, data: Any) -> "Worldview":
+        if not isinstance(data, dict):
+            # 만약 리스트라면 첫 번째 요소 사용 시도
+            if isinstance(data, list) and len(data) > 0:
+                data = data[0]
+            else:
+                data = {}
+        
+        constants_raw = data.get("constants", [])
+        constants = [WorldConstant(**c) for c in constants_raw] if isinstance(constants_raw, list) else []
+        
+        rules_raw = data.get("rules", [])
+        rules = [WorldRule(**r) for r in rules_raw] if isinstance(rules_raw, list) else []
+        
         return cls(
-            world_id=data["world_id"],
-            genre=data["genre"],
+            world_id=data.get("world_id", "미정"),
+            genre=data.get("genre", "미정"),
             features=data.get("features", {}),
             constants=constants,
             rules=rules,
@@ -93,17 +104,29 @@ class CharacterSet:
     characters: List[Character]
 
     @classmethod
-    def from_dict(cls, data: dict) -> "CharacterSet":
+    def from_dict(cls, data: Any) -> "CharacterSet":
         chars: List[Character] = []
-        for raw in data.get("characters", []):
+        if not isinstance(data, dict):
+            # 만약 리스트 자체가 캐릭터 목록이라면
+            raw_list = data if isinstance(data, list) else []
+        else:
+            raw_list = data.get("characters", [])
+            
+        if not isinstance(raw_list, list):
+            raw_list = []
+
+        for raw in raw_list:
+            if not isinstance(raw, dict): continue
+            
             rels_raw = raw.get("char_relationship", [])
-            rels = [CharacterRelationship(**r) for r in rels_raw] if rels_raw else None
+            rels = [CharacterRelationship(**r) for r in rels_raw] if isinstance(rels_raw, list) else None
+            
             ch = Character(
-                char_id=raw["char_id"],
-                name=raw["name"],
-                char_role=raw["char_role"],
-                dominant_trait=raw["dominant_trait"],
-                forbidden_action=raw["forbidden_action"],
+                char_id=raw.get("char_id", "unknown"),
+                name=raw.get("name", "N/A"),
+                char_role=raw.get("char_role") or raw.get("role") or "N/A",
+                dominant_trait=raw.get("dominant_trait", "N/A"),
+                forbidden_action=raw.get("forbidden_action", "N/A"),
                 initial_lack=raw.get("initial_lack"),
                 char_relationship=rels,
             )
@@ -188,36 +211,66 @@ class Plot:
     Plot_Nodes: List[PlotNode]
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Plot":
-        pm = data["Plot_Metadata"]
-        mc = MainCharacters(**pm["Main_Characters"])
-        core_def = CoreDeficiency(**pm["Core_Deficiency"]) if "Core_Deficiency" in pm else None
-        tags = Tags(**pm["Tags"]) if "Tags" in pm else None
-        vs = ValidationStatus(**pm["Validation_Status"]) if "Validation_Status" in pm else None
+    def from_dict(cls, data: Any) -> "Plot":
+        if not isinstance(data, dict):
+            data = {}
+            
+        pm_raw = data.get("Plot_Metadata", {})
+        if not isinstance(pm_raw, dict): pm_raw = {}
+        
+        mc_raw = pm_raw.get("Main_Characters", {})
+        mc = MainCharacters(**mc_raw) if isinstance(mc_raw, dict) else MainCharacters(Protagonist_ID="unknown")
+        
+        core_def_raw = pm_raw.get("Core_Deficiency")
+        core_def = CoreDeficiency(**core_def_raw) if isinstance(core_def_raw, dict) else None
+        
+        tags_raw = pm_raw.get("Tags")
+        tags = Tags(**tags_raw) if isinstance(tags_raw, dict) else None
+        
+        vs_raw = pm_raw.get("Validation_Status")
+        vs = ValidationStatus(**vs_raw) if isinstance(vs_raw, dict) else None
 
         meta = PlotMetadata(
-            Story_ID=pm["Story_ID"], Title=pm["Title"], Author=pm["Author"],
-            Created_At=pm["Created_At"], Updated_At=pm["Updated_At"],
-            Applied_Structure=pm["Applied_Structure"], Main_Characters=mc,
-            Core_Deficiency=core_def, Tags=tags, Validation_Status=vs,
+            Story_ID=pm_raw.get("Story_ID", "unknown"), 
+            Title=pm_raw.get("Title", "Untitled"), 
+            Author=pm_raw.get("Author", "AI"),
+            Created_At=pm_raw.get("Created_At", ""), 
+            Updated_At=pm_raw.get("Updated_At", ""),
+            Applied_Structure=pm_raw.get("Applied_Structure", ""), 
+            Main_Characters=mc,
+            Core_Deficiency=core_def, 
+            Tags=tags, 
+            Validation_Status=vs,
         )
 
         nodes: List[PlotNode] = []
         for raw in data.get("Plot_Nodes", []):
-            cl = CausalLinks(**raw["Causal_Links"]) if "Causal_Links" in raw else None
-            vu = raw["Validation_Data"]
-            su = StateUpdate(**vu["State_Update"]) if "State_Update" in vu and vu["State_Update"] is not None else None
+            if not isinstance(raw, dict): continue
+            
+            cl_raw = raw.get("Causal_Links")
+            cl = CausalLinks(**cl_raw) if isinstance(cl_raw, dict) else None
+            
+            vu = raw.get("Validation_Data", {})
+            if not isinstance(vu, dict): vu = {}
+            
+            su_raw = vu.get("State_Update")
+            su = StateUpdate(**su_raw) if isinstance(su_raw, dict) else None
+            
             vd = ValidationData(
                 Required_Trait=vu.get("Required_Trait"),
-                Effect_Type=vu["Effect_Type"],
+                Effect_Type=vu.get("Effect_Type", "Neutral"),
                 State_Update=su,
             )
             node = PlotNode(
-                Node_ID=raw["Node_ID"], Sequence_Index=raw["Sequence_Index"],
-                Function_ID=raw["Function_ID"], Content=raw["Content"],
+                Node_ID=raw.get("Node_ID", "unknown"), 
+                Sequence_Index=raw.get("Sequence_Index", 0),
+                Function_ID=raw.get("Function_ID", ""), 
+                Content=raw.get("Content", ""),
                 Involved_Characters=raw.get("Involved_Characters", []),
-                Background_World_ID=raw["Background_World_ID"],
-                Validation_Data=vd, Causal_Links=cl, Memo=raw.get("Memo"),
+                Background_World_ID=raw.get("Background_World_ID", ""),
+                Validation_Data=vd, 
+                Causal_Links=cl, 
+                Memo=raw.get("Memo"),
             )
             nodes.append(node)
         return cls(Plot_Metadata=meta, Plot_Nodes=nodes)
