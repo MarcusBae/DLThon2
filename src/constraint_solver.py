@@ -35,6 +35,11 @@ class NarrativeConstraintSolver:
         
         return [self.nodes[current_idx + 1]["milestone_id"]]
 
+    def validate_transition(self, from_id: str, to_id: str) -> bool:
+        """두 노드 간의 전이가 논리적으로 유효한지 확인합니다."""
+        valid_next = self.get_valid_next_ids(from_id)
+        return to_id in valid_next
+
     def solve_sequence(self, length=5):
         """Example: Use CP-SAT to find a valid sequence of a certain length."""
         model = cp_model.CpModel()
