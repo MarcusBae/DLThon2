@@ -73,7 +73,7 @@ classDiagram
 n-l-engine/
 ├── data/                   # 서사 이론 및 자산 데이터 (JSON)
 │   ├── schema.json         # 데이터 규격 스키마
-│   ├── theory.json         # Propp/Vogler 서사 규칙
+│   ├── theory_plot.json    # Propp/Vogler 서사 규칙
 │   ├── assets.json         # 캐릭터 및 세계관 템플릿
 │   └── episodes.json       # 에피소드 샘플 데이터
 ├── src/                    # 핵심 로직 및 에이전트

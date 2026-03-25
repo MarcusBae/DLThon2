@@ -1,0 +1,3 @@
+narrative_agent.py 파일
+
+    llm 파리미터로 받을 것  
