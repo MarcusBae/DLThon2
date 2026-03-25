@@ -1,0 +1,64 @@
+{
+  "Plot_Metadata": {
+    "Story_ID": "STORY_20260325_DREAM",
+    "Title": "꿈을 줍는 청소부",
+    "Author": "User123",
+    "Created_At": "2026-03-25T10:00:00Z",
+    "Updated_At": "2026-03-25T11:30:00Z",
+    "Applied_Structure": "propp",
+    "Main_Characters": {
+      "Protagonist_ID": "CHAR_SWEEPER_01",
+      "Antagonist_ID": "CHAR_WEAVER_01"
+    },
+    "Core_Deficiency": {
+      "Immediate_Lack": "이번 달 방세를 내기 위한 당장의 급전",
+      "Fundamental_Lack": "잃어버린 자신의 정체성(기억)을 찾고 싶은 본능"
+    },
+    "Tags": {
+      "Topics": ["기억", "사이버펑크", "추리"],
+      "Polarity": "Positive"
+    },
+    "Validation_Status": {
+      "Violation_Rate": "0%",
+      "Is_Valid": true
+    }
+  },
+  "Plot_Nodes": [
+    {
+      "Node_ID": "N_001",
+      "Sequence_Index": 10.0,
+      "Function_ID": "P02",
+      "Content": "이루다는 꿈 쓰레기장에서 처리해서는 안 될 '1급 금지구역의 꿈 조각'을 줍게 된다.",
+      "Involved_Characters": ["CHAR_SWEEPER_01"],
+      "Background_World_ID": "LOC_DUMP_01",
+      "Validation_Data": {
+        "Required_Trait": "돈에 대한 절박함",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "여기서 IDEA_20260325_001의 '보라색 안개' 묘사를 활용함."
+    },
+    {
+      "Node_ID": "N_002",
+      "Sequence_Index": 20.0,
+      "Function_ID": "P03",
+      "Content": "돈이 필요했던 이루다는 결국 금기를 깨고 그 꿈 조각을 열어보게 되고, 그 속에서 자신의 잃어버린 과거를 일부 보게 된다.",
+      "Involved_Characters": ["CHAR_SWEEPER_01"],
+      "Background_World_ID": "LOC_DUMP_01",
+      "Causal_Links": {
+        "Causes": ["N_001"],
+        "Effects": ["N_005"]
+      },
+      "Validation_Data": {
+        "Required_Trait": "호기심",
+        "Effect_Type": "SETTING_CHANGE",
+        "State_Update": {
+          "Target_Char_ID": "CHAR_SWEEPER_01",
+          "Target_Trait": "initial_lack",
+          "New_Value": "단순한 급전에서 '자신의 과거를 찾기 위한 추적'으로 동기 변화"
+        }
+      },
+      "Memo": "금기 위반 사건 발생. 이 시점부터 주인공의 목표가 변경됨(State_Update 적용)."
+    }
+  ]
+}
+
