@@ -14,11 +14,6 @@ venv/
 # Streamlit
 .streamlit/
 
-# Narrative Engine Data (Dynamic session data)
-data/session/*
-data/user_data/story_*
-data/session_cache.pkl
-
 # IDEs
 .vscode/
 .idea/
