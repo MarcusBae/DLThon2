@@ -406,11 +406,22 @@ def show_home():
         if not valid_stories:
             st.markdown("<p class='home-empty-msg'>아직 저장된 스토리가 없습니다.</p>", unsafe_allow_html=True)
         else:
+            if 'max_stories' not in st.session_state:
+                st.session_state.max_stories = 6
+                
+            sorted_stories = sorted(valid_stories, reverse=True)
+            display_stories = sorted_stories[:st.session_state.max_stories]
+            
             st.markdown('<div class="hist-grid-marker"></div>', unsafe_allow_html=True)
-            cols = st.columns(len(valid_stories))
-            for i, sid in enumerate(sorted(valid_stories, reverse=True)):
-                with cols[i]:
-                    with st.container(border=True):
+            
+            # 한 줄에 3개씩 배치
+            for i in range(0, len(display_stories), 3):
+                cols = st.columns(3)
+                chunk = display_stories[i:i+3]
+                
+                for j, sid in enumerate(chunk):
+                    with cols[j]:
+                        with st.container(border=True):
                             registry_data = get_story_registry()
                             stories_dict = registry_data.get("stories", {})
                             if isinstance(stories_dict, dict):
@@ -418,6 +429,7 @@ def show_home():
                                 title = story_info.get("title", sid) if isinstance(story_info, dict) else sid
                             else:
                                 title = sid
+                            
                             inner_btn, del_btn = st.columns([5, 1], vertical_alignment="center")
                             if inner_btn.button(f"{title}", key=f"resume_{sid}", use_container_width=True):
                                 st.session_state.active_story_id = sid
@@ -432,8 +444,19 @@ def show_home():
                                     st.session_state.current_state = None
                                     st.session_state.chat_ui_messages = []
                                 st.rerun()
+                                
                             if del_btn.button("🗑️", key=f"del_{sid}", help="스토리 삭제", use_container_width=True):
                                 confirm_delete_dialog(sid)
+
+            # 더보기 버튼 구현
+            if len(sorted_stories) > st.session_state.max_stories:
+                st.markdown("<br>", unsafe_allow_html=True)
+                _, btn_col, _ = st.columns([1, 1, 1])
+                with btn_col:
+                    if st.button("🔽 더보기", use_container_width=True):
+                        st.session_state.max_stories += 6
+                        st.rerun()
+
     else:
         st.markdown("<p class='home-empty-msg'>아직 저장된 스토리가 없습니다.</p>", unsafe_allow_html=True)
 

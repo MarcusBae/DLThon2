@@ -71,24 +71,66 @@ classDiagram
 
 ```text
 n-l-engine/
-├── data/                   # 서사 이론 및 자산 데이터 (JSON)
-│   ├── schema.json         # 데이터 규격 스키마
-│   ├── theory_plot.json    # Propp/Vogler 서사 규칙
-│   ├── assets.json         # 캐릭터 및 세계관 템플릿
-│   └── episodes.json       # 에피소드 샘플 데이터
+├── data/
+│   ├── session/            # LangGraph 세션 피클(캐시) 및 임시 스테이트 보관
+│   ├── system/             # 시스템 설정(workflow_data, schema 등) 및 플롯 에이전트 가이드
+│   ├── theory/             # 원형(Propp, Vogler 등) 서사 이론 데이터 (JSON/MD)
+│   └── user_data/          # 사용자별 유저 세션 및 스토리 창작물 모음 (동적 생성)
+├── fonts/                  # 리포트 및 시각화용 폰트 에셋 (ex: NotoSansKR)
 ├── src/                    # 핵심 로직 및 에이전트
-│   ├── constraint_solver.py # OR-Tools 기반 제약 엔진
-│   ├── graph_manager.py     # NetworkX 기반 그래프 관리
-│   ├── narrative_agent.py   # LangGraph 에이전트 워크플로우
-│   ├── validator_agent.py   # 논리 및 일관성 검증
-│   ├── mapper_agent.py      # 입력 → 서사 노드 매핑
-│   ├── data_loader.py       # 데이터 로딩 유틸리티
-│   ├── visualizer.py        # Streamlit 그래프 시각화
-│   └── ...
-├── notebooks/              # EDA 및 로직 프로토타이핑 (Jupyter)
-├── main.py                 # Streamlit 대시보드 진입점
+│   ├── constraint_solver.py # OR-Tools 기반 특정 이론적 제약 해결 (옵션)
+│   ├── graph_manager.py     # NetworkX 기반 노드(DAG) 캐싱 및 구조화 관리
+│   ├── narrative_agent.py   # LangGraph 기반 스토리 대화 워크플로우 (Planner/Generator/Extractor)
+│   ├── report_view.py       # LLM 검증 결과를 시각화하고 PDF 리포트를 렌더링하는 뷰포트
+│   ├── tools.py             # 코어 데이터 모델(Dataclasses) 및 파일 I/O 유틸리티 지원
+│   ├── validator_agent.py   # 세계관, 캐릭터, 플롯 설정 간 논리 모순/충돌 검증 엔진
+│   └── visualizer.py        # Streamlit 플롯 그래프 매핑 (폭포수 렌더) 로직
+├── notebooks/              # 데이터 정의 및 구조 프로토타이핑 (Jupyter)
+├── main.py                 # Streamlit 웹 앱 진입점 및 View(홈/채팅/리포트) 라우팅
 └── requirements.txt        # 프로젝트 의존성 목록
 ```
+
+## 🔄 사용자 창작 및 리포트 시퀀스 (Sequence Diagram)
+
+다음은 메인 화면(Home)에서 새로운 스토리를 시작하여 창작 세션(Chat)을 진행하고, 최종적으로 리포트(Report View)를 생성하는 기본 흐름도입니다.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant M as main.py (UI)
+    participant N as narrative_agent.py
+    participant V as validator_agent.py
+    participant FS as File System
+    
+    %% 스토리 생성
+    U->>M: 스토리 제목 또는 아이디어 입력
+    M->>FS: 새로운 세션(metadata 및 session_cache) 생성
+    
+    %% 대화 및 스토리 구체화 루프
+    loop 창작 멘토링
+        U->>M: 응답 (예: 선택지 번호 입력)
+        M->>N: 대화 상태 전달 (LangGraph invoke)
+        N->>N: history_node → generator_node
+        N-->>M: 다음 질문 프롬프트 반환
+        
+        opt 섹션 목표 달성 시 (STEP_COMPLETED)
+            N->>N: update_node 실행
+            N->>FS: world, character, plot 등 추출 데이터 실시간 JSON 병합 기록
+        end
+    end
+    
+    %% 세션 캐싱 및 리포트 평가
+    M->>FS: 현재 진행 상태 session_cache.pkl로 직렬화 백업
+    U->>M: '종합 분석 리포트 확인하기' 버튼 클릭
+    
+    %% 검증 실행
+    M->>V: 선택된 스토리 디렉토리 분석 요청
+    V->>FS: 확정된 JSON 데이터(세계관, 캐릭터 등) Read
+    V->>V: LLM 기반 논리 충돌/모순 교차 검증 연산 시작
+    V-->>M: 위반율 및 트러블메이커 등 대시보드 리포트 데이터 반환
+    M-->>U: 시각화 리포트 표출 및 PDF 다운로드 기능 제공
+```
+
 
 ## 🛠 기술 스택
 - **Language**: Python 3.10+
