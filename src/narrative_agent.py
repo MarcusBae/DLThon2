@@ -2,9 +2,11 @@
 """LangGraph implementation for narrative node generation following the router-centric design."""
 
 import os
+import json
+import difflib
+from datetime import datetime
 from typing import Annotated, Sequence, TypedDict, Union, Dict, List, Any, cast
 import operator
-import json
 
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
@@ -229,10 +231,6 @@ def generator_node(state: NarrativeGraphState):
     3. **단계별 집중 (Step-Fidelity)**: 현재 단계({task_name})의 미션에만 집중하세요. {task_name}를 구축하는 것이 목표입니다.
     4. **점진적 복잡성**: {complexity_instruction}
     
-    [현재 창작 단계: {task_name}]
-    - **핵심 미션**: {agent_mission}
-    - **요건**: {reqs_text}
-    
     [심리스 다음 단계 지침 (Seamless Transition)]
     만약 현재 단계({task_name})의 요건이 충분히 충족되어 확정되었다면, **"{task_name}이(가) 확정되었습니다! [STEP_COMPLETED]"**라고 명시하고, **대화를 끊지 말고 즉시** 다음 단계인 **'{next_task_name}'**에 대한 첫 질문을 던지세요.
     
@@ -274,7 +272,7 @@ def update_node(state: NarrativeGraphState):
         return func(path) if os.path.exists(path) else fallback
         
     # Load schema for characters and worldview
-    schema_path = os.path.join(data_dir, "system", "schema_data_modified.json")
+    schema_path = os.path.join(data_dir, "system", "schema_data.json")
     schema_data = safe_load(load_json, schema_path, {})
     char_schema = schema_data.get("definitions", {}).get("character_schema", {})
     world_schema = schema_data.get("definitions", {}).get("worldview_schema", {})
@@ -301,11 +299,45 @@ def update_node(state: NarrativeGraphState):
                 theory_desc = f"이론명: {t.get('theory_name')}\n" + "\n".join(ms_list)
                 break
 
+    # 기존 캐릭터 컨텍스트 추출
+    characters_data = state.get('master_data', {}).get('characters', [])
+    if hasattr(characters_data, 'characters'): _chars_list = characters_data.characters
+    elif isinstance(characters_data, dict): _chars_list = characters_data.get('characters', [])
+    elif isinstance(characters_data, list): _chars_list = characters_data
+    else: _chars_list = []
+    if _chars_list is None: _chars_list = []
+    
+    chars_ext = []
+    for c in _chars_list:
+        if isinstance(c, dict): chars_ext.append(f"{c.get('name')}: {c.get('char_id')}")
+        elif hasattr(c, 'name'): chars_ext.append(f"{c.name}: {c.char_id}")
+    
+    existing_chars_info = ", ".join(chars_ext)
+    char_context = f"\n    [기존 등록된 캐릭터 ID 매핑]\n    기존 인물을 다시 추출할 때는 절대 임의의 새 ID를 쓰지 말고 반드시 아래의 기존 고유 ID를 동일하게 재사용하세요:\n    {existing_chars_info}\n" if existing_chars_info else ""
+
+    # 기존 플롯 노드 컨텍스트 추출 (소수점 인덱스 파악용)
+    plot_data = state.get('master_data', {}).get('plot_nodes', [])
+    if hasattr(plot_data, 'Plot_Nodes'): _plot_list = plot_data.Plot_Nodes
+    elif isinstance(plot_data, dict): _plot_list = plot_data.get('Plot_Nodes', []) or plot_data.get('plot_nodes', [])
+    elif isinstance(plot_data, list): _plot_list = plot_data
+    else: _plot_list = []
+    if _plot_list is None: _plot_list = []
+    
+    plot_strings = []
+    for pn in _plot_list:
+        if isinstance(pn, dict):
+            plot_strings.append(f"- {pn.get('Node_ID')}: {pn.get('Function_ID')} (Seq: {pn.get('Sequence_Index')}) - {pn.get('Content')}")
+        elif hasattr(pn, 'Node_ID'):
+            plot_strings.append(f"- {pn.Node_ID}: {pn.Function_ID} (Seq: {pn.Sequence_Index}) - {pn.Content}")
+            
+    plot_ctx_info = "\n    ".join(plot_strings)
+    plot_context = f"\n    [기존 작성된 플롯 노드 상태]\n    새로운 노드의 Sequence_Index를 정할 때 아래 기존 노드들의 Seq 값을 참고하세요:\n    {plot_ctx_info}\n" if plot_ctx_info else ""
+
     # 1. 메타데이터 추출용 프롬프트
     extract_msg = SystemMessage(content=f"""
     당신의 임무는 대화 기록을 분석하여 사용자와 에이전트 사이에 '확정'된 스토리 요소를 JSON 형태로 추출하는 것입니다.
     사용자가 "좋아", "그걸로 가자", "응" 등 긍정적인 반응을 보인 내용만 확정된 것으로 간주합니다.
-    
+    {char_context}{plot_context}
     [참고 구조 및 제약]
     1. 세계관: 다음 구조를 따르세요.
        {json.dumps(world_schema.get('properties', {}), ensure_ascii=False)}
@@ -346,7 +378,7 @@ def update_node(state: NarrativeGraphState):
           {{
             "Node_ID": "N_001",
             "Sequence_Index": 10.0,
-            "Function_ID": "P01",
+            "Function_ID": "<반드시 3. 플롯의 해당 단계 '가능 함수' 중 하나를 정확히 복사해서 기입할 것>",
             "Content": "해당 단계에서 일어난 구체적 사건 요약",
             "Involved_Characters": ["CHAR_01"],
             "Background_World_ID": "WORLD_01",
@@ -358,6 +390,8 @@ def update_node(state: NarrativeGraphState):
     }}
     
     오직 순수한 JSON만 출력하세요. 데이터가 충분하지 않다면 기존 데이터를 유지하거나 빈 항목으로 두세요. 마크다운 언어 태그(```json 등)를 사용하지 마세요. 방금 전 대화에서 새롭게 확정된 진행 단계(단일 노드)만 **새로 추가**할 것.
+    주의: Function_ID에는 임의의 값을 적지 말고, 반드시 위 3. 플롯에 제공된 '가능 함수' 목록에 있는 텍스트(예: P01(부재), STC_OPENING 등)를 그대로 써야 합니다.
+    Sequence_Index 부여 규칙: 각 사건은 [마일스톤 순서][함수 순서].0 의 기본값을 가집니다 (예: 2막 3번째 함수면 23.0). 같은 함수의 사건이 여러 개라면 23.1, 23.2 로 증가시키며, 기존 23.8과 23.9 사이에 발생한 중간 사건이라면 23.85 처럼 소수점을 지정하세요.
     """)
     
     try:
@@ -383,20 +417,58 @@ def update_node(state: NarrativeGraphState):
         data_dir = "./data/user_data"
         user_path = os.path.join(data_dir, story_id)
         
-        if isinstance(data, dict) and "worldview" in data:
-            with open(os.path.join(user_path, "created_worldview.json"), "w", encoding="utf-8") as f:
-                json.dump(data["worldview"], f, ensure_ascii=False, indent=2)
-        
-        if isinstance(data, dict) and "characters" in data:
-            # CharacterSet 형식에 맞춰서 저장
-            char_set_data = {"characters": data["characters"]}
-            with open(os.path.join(user_path, "created_character.json"), "w", encoding="utf-8") as f:
-                json.dump(char_set_data, f, ensure_ascii=False, indent=2)
-
         # master_data 상태도 업데이트
         new_master = dict(state.get("master_data", {}))
         
-        # 1. 기존 플롯 데이터 로드
+        # 1. Worldview 병합 저장
+        if isinstance(data, dict) and "worldview" in data:
+            wv_file = os.path.join(user_path, "created_worldview.json")
+            existing_wv = {}
+            if os.path.exists(wv_file):
+                try:
+                    with open(wv_file, "r", encoding="utf-8") as f:
+                        existing_wv = json.load(f)
+                except Exception: pass
+            if isinstance(data["worldview"], dict):
+                existing_wv.update(data["worldview"])
+            with open(wv_file, "w", encoding="utf-8") as f:
+                json.dump(existing_wv, f, ensure_ascii=False, indent=2)
+            new_master["worldview"] = existing_wv
+
+        # 2. Characters 병합 저장
+        if isinstance(data, dict) and "characters" in data:
+            char_file = os.path.join(user_path, "created_character.json")
+            existing_chars_data = {"characters": []}
+            if os.path.exists(char_file):
+                try:
+                    with open(char_file, "r", encoding="utf-8") as f:
+                        existing_chars_data = json.load(f)
+                except Exception: pass
+            
+            existing_chars = existing_chars_data.get("characters", [])
+            new_chars = data["characters"] if isinstance(data["characters"], list) else []
+            
+            for nc in new_chars:
+                if not isinstance(nc, dict): continue
+                c_id = nc.get("char_id")
+                matched = False
+                for i, ec in enumerate(existing_chars):
+                    if isinstance(ec, dict) and ec.get("char_id") == c_id:
+                        if c_id is not None:
+                            existing_chars[i].update(nc)
+                            matched = True
+                            break
+                if not matched:
+                    if not c_id:
+                        nc["char_id"] = f"CHAR_{len(existing_chars)+1:02d}"
+                    existing_chars.append(nc)
+                    
+            existing_chars_data["characters"] = existing_chars
+            with open(char_file, "w", encoding="utf-8") as f:
+                json.dump(existing_chars_data, f, ensure_ascii=False, indent=2)
+            new_master["characters"] = existing_chars
+
+        # 3. Plot Data 병합 저장
         existing_plot_data = {"Plot_Metadata": {}, "Plot_Nodes": []}
         plot_file_path = os.path.join(user_path, "created_plot.json")
         if os.path.exists(plot_file_path):
@@ -405,13 +477,9 @@ def update_node(state: NarrativeGraphState):
                     existing_plot_data = json.load(f)
             except Exception: pass
             
-        if "plot_data" not in existing_plot_data:
-            existing_plot_data = {"Plot_Metadata": {}, "Plot_Nodes": []}
-            
         if "Plot_Nodes" not in existing_plot_data:
             existing_plot_data["Plot_Nodes"] = []
 
-        # 2. 새로운 플롯 데이터 병합 (Append)
         if isinstance(data, dict) and "plot_data" in data:
             new_plot_data = data["plot_data"]
             if isinstance(new_plot_data, dict):
@@ -423,9 +491,63 @@ def update_node(state: NarrativeGraphState):
                 if isinstance(new_nodes, list):
                     for n in new_nodes:
                         if isinstance(n, dict):
+                            # 중복 (유사도 80% 이상) 텍스트 검사기
+                            is_dup = False
+                            for ex_n in existing_plot_data.get("Plot_Nodes", []):
+                                if isinstance(ex_n, dict):
+                                    ratio = difflib.SequenceMatcher(None, n.get("Content", ""), ex_n.get("Content", "")).ratio()
+                                    if ratio > 0.8:
+                                        is_dup = True
+                                        break
+                            if is_dup: continue
+                            
                             # N_001 버그를 막기 위한 동적 ID 순차 발급
                             new_idx = len(existing_plot_data["Plot_Nodes"]) + 1
                             n["Node_ID"] = f"N_{new_idx:03d}"
+                            
+                            # 플롯 이론에 기반한 Sequence_Index 자동 계산
+                            calc_seq = 0.0
+                            f_id_val = str(n.get("Function_ID", ""))
+                            from src.data_loader import load_theory
+                            t_data = load_theory()
+                            curr_t = state.get("theory_choice", "THEORY_PROPP_VOGLER_HYBRID")
+                            
+                            if t_data and "plot_theories" in t_data:
+                                for t in t_data["plot_theories"]:
+                                    if t.get("theory_id") == curr_t:
+                                        for m_idx, ms in enumerate(t.get("milestones", [])):
+                                            for f_idx, func in enumerate(ms.get("mapped_functions", [])):
+                                                func_str = func.get("function_id", "") if isinstance(func, dict) else str(func)
+                                                if f_id_val and (f_id_val in func_str or func_str in f_id_val):
+                                                    calc_seq = float((m_idx + 1) * 10 + (f_idx + 1))
+                                                    break
+                                            if calc_seq > 0: break
+                                        break
+                                        
+                            if calc_seq > 0:
+                                llm_seq = float(n.get("Sequence_Index", 0.0))
+                                # LLM이 현재 Function_ID의 대역(calc_seq의 정수부) 내에서 소수점(예: 23.85)을 지정했다면 존중
+                                if int(llm_seq) == int(calc_seq):
+                                    n["Sequence_Index"] = llm_seq
+                                else:
+                                    # 파이썬에서 자동 순차 소수점 할당 로직
+                                    same_base_seqs = [
+                                        float(old_n.get("Sequence_Index", 0.0)) 
+                                        for old_n in existing_plot_data["Plot_Nodes"] 
+                                        if int(float(old_n.get("Sequence_Index", 0.0))) == int(calc_seq)
+                                    ]
+                                    if not same_base_seqs:
+                                        n["Sequence_Index"] = calc_seq
+                                    else:
+                                        max_seq = max(same_base_seqs)
+                                        if max_seq == calc_seq:
+                                            n["Sequence_Index"] = calc_seq + 0.1
+                                        else:
+                                            next_seq = max_seq + 0.1
+                                            if next_seq >= calc_seq + 1.0:
+                                                next_seq = max_seq + 0.01
+                                            n["Sequence_Index"] = round(next_seq, 2)
+                                
                             existing_plot_data["Plot_Nodes"].append(n)
                             
             with open(plot_file_path, "w", encoding="utf-8") as f:
@@ -434,9 +556,7 @@ def update_node(state: NarrativeGraphState):
             new_master["plot_nodes"] = existing_plot_data["Plot_Nodes"]
         else:
             new_master["plot_nodes"] = existing_plot_data.get("Plot_Nodes", [])
-            
-        if "worldview" in data: new_master["worldview"] = data["worldview"]
-        if "characters" in data: new_master["characters"] = data["characters"]
+        
         
         return {"master_data": new_master, "next_node": "response_check"}
     except Exception as e:

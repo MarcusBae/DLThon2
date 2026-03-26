@@ -4,11 +4,14 @@
     "Geography": "비 오는 거리가 있는 도시",
     "Society": "비밀과 이간질이 숨겨진 세계"
   },
-  "genre": "서사와 모험이 있는 이야기",
+  "genre": "판타지",
   "World_Rules": [
     {
       "rule_id": "RULE_001",
       "description": "은인이라 믿었던 자가 진정한 원수일 수 있다."
     }
-  ]
+  ],
+  "world_id": "WORLD_01",
+  "features": {},
+  "rules": []
 }

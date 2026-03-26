@@ -138,11 +138,10 @@ def show_home():
         plots = []
     
     if plots:
-        _, center_col, _ = st.columns([1, 8, 1])
-        with center_col:
-            cols = st.columns(len(plots))
-            for idx, plot in enumerate(plots):
-                with cols[idx]:
+        st.markdown('<div class="plot-grid-marker"></div>', unsafe_allow_html=True)
+        cols = st.columns(len(plots))
+        for idx, plot in enumerate(plots):
+            with cols[idx]:
                     # 이모지와 시작하기 텍스트 제외하고 별칭만 노출
                     btn_label = f"{plot.get('alias', plot['name'])}"
                     if st.button(btn_label, key=f"start_plot_{plot['id']}", use_container_width=True):
@@ -251,12 +250,11 @@ def show_home():
         if not valid_stories:
             st.markdown("<p class='home-empty-msg'>아직 저장된 스토리가 없습니다.</p>", unsafe_allow_html=True)
         else:
-            _, hist_col, _ = st.columns([1, 8, 1])
-            with hist_col:
-                cols = st.columns(3)
-                for i, sid in enumerate(sorted(valid_stories, reverse=True)):
-                    with cols[i % 3]:
-                        with st.container(border=True):
+            st.markdown('<div class="hist-grid-marker"></div>', unsafe_allow_html=True)
+            cols = st.columns(len(valid_stories))
+            for i, sid in enumerate(sorted(valid_stories, reverse=True)):
+                with cols[i]:
+                    with st.container(border=True):
                             registry_data = get_story_registry()
                             stories_dict = registry_data.get("stories", {})
                             if isinstance(stories_dict, dict):
@@ -264,9 +262,8 @@ def show_home():
                                 title = story_info.get("title", sid) if isinstance(story_info, dict) else sid
                             else:
                                 title = sid
-                            st.markdown(f"<div class='history-card-title'><b>{title}</b></div>", unsafe_allow_html=True)
-                            _, inner_btn, del_btn = st.columns([1, 4, 1])
-                            if inner_btn.button("이어서 쓰기", key=f"resume_{sid}", use_container_width=True):
+                            inner_btn, del_btn = st.columns([5, 1], vertical_alignment="center")
+                            if inner_btn.button(f"{title}", key=f"resume_{sid}", use_container_width=True):
                                 st.session_state.active_story_id = sid
                                 st.session_state.current_page = "chat"
                                 cache_file = os.path.join(session_root, sid, "session_cache.pkl")
@@ -487,6 +484,12 @@ def show_chat():
                     history_nodes = plot_data
                 
                 if history_nodes:
+                    # Sequence_Index 기준으로 정렬
+                    history_nodes = sorted(
+                        history_nodes,
+                        key=lambda x: float(x.get("Sequence_Index", 0.0)) if isinstance(x, dict) else float(getattr(x, "Sequence_Index", 0.0))
+                    )
+                    
                     if res and 'current_section' in res:
                         st.caption(f"**Current Checkpoint:** {res['current_section']}")
                     
@@ -501,16 +504,17 @@ def show_chat():
                             f_id = getattr(node, "Function_ID", "N/A")
                             content = getattr(node, "Content", "내용 없음")
                         
-                        st.markdown(f"**Step {i+1} [{n_id}]**: `{f_id}` - {content}")
-                        history.append(n_id)
+                        st.markdown(f"{i+1}. **{n_id}** - {content} (`{f_id}`)")
+                        history.append((n_id, f_id))
                         
                     st.markdown("---")
                     st.markdown("**Causal Plot Graph**")
                     manager = NarrativeGraphManager()
                     for i in range(len(history)):
-                        manager.add_milestone(history[i])
+                        n_id, f_id = history[i]
+                        manager.add_milestone(n_id, metadata={"function_id": f_id})
                         if i > 0:
-                            manager.add_causality(history[i-1], history[i], "Then")
+                            manager.add_causality(history[i-1][0], n_id, "Then")
                     draw_narrative_graph(manager.get_graph_data())
                 else:
                     st.caption("아직 생성된 플롯 노드가 없습니다. 채팅을 시작하면 자동 생성됩니다.")

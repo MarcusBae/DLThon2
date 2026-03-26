@@ -1,21 +1,21 @@
 {
   "characters": [
     {
-      "char_id": "CHAR_JIYOO",
+      "char_id": "CHAR_01",
       "name": "지유",
       "char_role": "주인공",
       "dominant_trait": "부서진 검을 들고 잃어버린 기억을 찾는 과거가 있는 소녀",
       "forbidden_action": "복수에 집착하여 성숙함을 잃는 것"
     },
     {
-      "char_id": "CHAR_YONGCHUL",
+      "char_id": "CHAR_02",
       "name": "용철",
       "char_role": "조력자 (친아버지)",
       "dominant_trait": "사정상 정체를 숨기고 지유를 몰래 지켜주며 오해를 받는 인물",
       "forbidden_action": "지유에게 자신이 아버지임을 섣불리 밝히는 것"
     },
     {
-      "char_id": "CHAR_ENEMY",
+      "char_id": "CHAR_03",
       "name": "진짜 원수 (은인)",
       "char_role": "적대자",
       "dominant_trait": "지유를 데려다 키우며 은인 행세를 하지만 실상은 부녀 사이를 이간질한 만악의 근원",

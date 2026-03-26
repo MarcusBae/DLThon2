@@ -3,7 +3,7 @@
     "id": "THEORY_4CUT_COMIC",
     "name": "4컷 만화 구조",
     "description": "기승전결에 특화된 빠르고 임팩트 있는 단편 스토리 설계 (웹툰, 숏폼 추천)",
-    "usage_count": 13,
+    "usage_count": 17,
     "icon": "🔖",
     "alias": "임팩트 있는 짧은 이야기"
   },
@@ -11,7 +11,7 @@
     "id": "THEORY_PROPP_VOGLER_HYBRID",
     "name": "영웅의 여정 (통합)",
     "description": "Vogler의 영웅의 여정과 Propp의 민담 형태학이 결합된 견고한 대서사시",
-    "usage_count": 24,
+    "usage_count": 26,
     "icon": "⚔️",
     "alias": "서사와 모험이 있는 이야기"
   },
@@ -19,7 +19,7 @@
     "id": "THEORY_SAVE_THE_CAT",
     "name": "세이브 더 캣",
     "description": "할리우드 흥행 불패 15단계 시나리오 공식 (영화, 웹소설 장편 추천)",
-    "usage_count": 1,
+    "usage_count": 2,
     "icon": "🐈",
     "alias": "할리우드 흥행 불패 스토리"
   }

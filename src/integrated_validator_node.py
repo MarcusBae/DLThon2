@@ -3,7 +3,7 @@ import json
 from src.constraint_solver import NarrativeConstraintSolver # 동료의 로직 참조
 
 class IntegratedValidator:
-    def __init__(self, theory_type="propp", schema_path="../data/system/schema_data_modified.json"):
+    def __init__(self, theory_type="propp", schema_path="../data/system/schema_data.json"):
         # 1계층: 구조적 전이 검증기 (동료의 Solver)
         self.path_solver = NarrativeConstraintSolver(theory_type=theory_type)
         # 2계층: 맥락적 제약 검증 데이터

@@ -1,24 +1,19 @@
 {
   "Plot_Metadata": {
     "Story_ID": "story_20260326_090538",
-    "Title": "잃어버린 검의 비밀",
+    "Title": "스토리 제목",
     "Applied_Structure": "THEORY_PROPP_VOGLER_HYBRID",
     "Main_Characters": {
-      "Protagonist_ID": "CHAR_JIYOO",
-      "Antagonist_ID": "CHAR_ENEMY"
+      "Protagonist_ID": "CHAR_01",
+      "Antagonist_ID": "CHAR_03"
     },
     "Core_Deficiency": {
-      "Immediate_Lack": "잃어버린 과거의 기억",
-      "Fundamental_Lack": "가족(아버지)과의 진정한 재회 및 성숙한 사랑"
+      "Immediate_Lack": "정체성",
+      "Fundamental_Lack": "사랑과 신뢰"
     },
     "Tags": {
-      "Topics": [
-        "복수",
-        "기억",
-        "가족",
-        "성장"
-      ],
-      "Polarity": "Positive"
+      "Topics": [],
+      "Polarity": "Neutral"
     },
     "Validation_Status": {
       "Violation_Rate": "0%",
@@ -28,11 +23,11 @@
   "Plot_Nodes": [
     {
       "Node_ID": "N_001",
-      "Sequence_Index": 10.0,
-      "Function_ID": "ACT1_INTRO",
+      "Sequence_Index": 23.0,
+      "Function_ID": "P11(출발)",
       "Content": "부서진 검을 들고 서 있는 은인(진원수)의 밑에서 자란 지유가 잃어버린 기억을 찾기 위해 모험을 떠남",
       "Involved_Characters": [
-        "CHAR_JIYOO"
+        "CHAR_01"
       ],
       "Background_World_ID": "WORLD_01",
       "Validation_Data": {},
@@ -40,13 +35,13 @@
     },
     {
       "Node_ID": "N_002",
-      "Sequence_Index": 20.0,
-      "Function_ID": "ACT2_DEVELOPMENT",
+      "Sequence_Index": 21.0,
+      "Function_ID": "P09(중재)",
       "Content": "자신을 챙기던 은인이 사실 진짜 원수였고, 진원수의 이간질로 인해 원수로 오해하던 사람이 친아버지 용철이라는 진실이 드러남",
       "Involved_Characters": [
-        "CHAR_JIYOO",
-        "CHAR_YONGCHUL",
-        "CHAR_ENEMY"
+        "CHAR_01",
+        "CHAR_02",
+        "CHAR_03"
       ],
       "Background_World_ID": "WORLD_01",
       "Validation_Data": {},
@@ -54,15 +49,32 @@
     },
     {
       "Node_ID": "N_003",
-      "Sequence_Index": 30.0,
-      "Function_ID": "ACT4_RESOLUTION",
+      "Sequence_Index": 34.0,
+      "Function_ID": "P19(결핍 해소)",
       "Content": "지유는 분노를 극복하고 원망해온 세월을 반성하며 가족에게 집중하는 성숙한 인물로 성장함",
       "Involved_Characters": [
-        "CHAR_JIYOO"
+        "CHAR_01"
       ],
       "Background_World_ID": "WORLD_01",
       "Validation_Data": {},
       "Memo": "감정적 성장과 결말"
+    },
+    {
+      "Node_ID": "N_004",
+      "Sequence_Index": 31.0,
+      "Function_ID": "P16(투쟁)",
+      "Content": "지유가 아버지 용철과 진짜 원수의 싸움을 목격하고, 진짜 원수가 크게 다치는 사건이 발생한다.",
+      "Involved_Characters": [
+        "CHAR_01",
+        "CHAR_02",
+        "CHAR_03"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "결단력",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "지유는 복수를 다짐하게 된다."
     }
   ]
 }
