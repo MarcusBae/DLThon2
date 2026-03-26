@@ -1,0 +1,39 @@
+{
+  "characters": [
+    {
+      "char_id": "CHAR_01",
+      "name": "진호",
+      "char_role": "주인공",
+      "dominant_trait": "리더십",
+      "forbidden_action": "배신"
+    },
+    {
+      "char_id": "CHAR_02",
+      "name": "민재",
+      "char_role": "조력자",
+      "dominant_trait": "장난기",
+      "forbidden_action": "신뢰 배신"
+    },
+    {
+      "char_id": "CHAR_03",
+      "name": "세영",
+      "char_role": "조력자",
+      "dominant_trait": "지혜로움",
+      "forbidden_action": "무지"
+    },
+    {
+      "char_id": "CHAR_04",
+      "name": "소윤",
+      "char_role": "조력자",
+      "dominant_trait": "차분함",
+      "forbidden_action": "감정 억제"
+    },
+    {
+      "char_id": "CHAR_05",
+      "name": "하준",
+      "char_role": "조력자",
+      "dominant_trait": "의외의 재능",
+      "forbidden_action": "자신감 상실"
+    }
+  ]
+}

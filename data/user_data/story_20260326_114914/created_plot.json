@@ -1,0 +1,24 @@
+{
+  "Plot_Metadata": {
+    "Story_ID": "story_20260326_114914",
+    "Title": "시간을 잊은 그루들의 하루",
+    "Applied_Structure": "THEORY_PROPP_VOGLER_HYBRID",
+    "Main_Characters": {
+      "Protagonist_ID": "...",
+      "Antagonist_ID": "..."
+    },
+    "Core_Deficiency": {
+      "Immediate_Lack": "...",
+      "Fundamental_Lack": "..."
+    },
+    "Tags": {
+      "Topics": [],
+      "Polarity": "Neutral"
+    },
+    "Validation_Status": {
+      "Violation_Rate": "0%",
+      "Is_Valid": true
+    }
+  },
+  "Plot_Nodes": []
+}

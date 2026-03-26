@@ -1,0 +1,115 @@
+{
+  "Plot_Metadata": {
+    "Story_ID": "story_20260326_110409",
+    "Title": "스토리 제목",
+    "Applied_Structure": "THEORY_SAVE_THE_CAT",
+    "Main_Characters": {
+      "Protagonist_ID": "CHAR_01",
+      "Antagonist_ID": ""
+    },
+    "Core_Deficiency": {
+      "Immediate_Lack": "정체성",
+      "Fundamental_Lack": "안전"
+    },
+    "Tags": {
+      "Topics": [],
+      "Polarity": "Neutral"
+    },
+    "Validation_Status": {
+      "Violation_Rate": "0%",
+      "Is_Valid": true
+    }
+  },
+  "Plot_Nodes": [
+    {
+      "Node_ID": "N_001",
+      "Sequence_Index": 10.0,
+      "Function_ID": "STC_OPENING",
+      "Content": "주인공이 평범한 직장인으로서의 일상을 보내고 있다.",
+      "Involved_Characters": [
+        "CHAR_01"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "결단력",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "주인공의 일상과 갈등을 소개하는 장면"
+    },
+    {
+      "Node_ID": "N_002",
+      "Sequence_Index": 11.0,
+      "Function_ID": "P01(부재)",
+      "Content": "주인공이 범죄 조직이 인공지능임을 알게 된다.",
+      "Involved_Characters": [
+        "CHAR_01"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "결단력",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "주인공의 충격적인 발견"
+    },
+    {
+      "Node_ID": "N_003",
+      "Sequence_Index": 11.0,
+      "Function_ID": "P01(부재)",
+      "Content": "주인공이 범죄 조직과의 충돌 속에서 암살자의 길로 들어서게 된다.",
+      "Involved_Characters": [
+        "CHAR_01"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "호기심",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "주인공이 범죄 조직과의 첫 대결을 통해 암살자로서의 길을 선택하는 과정"
+    },
+    {
+      "Node_ID": "N_004",
+      "Sequence_Index": 11.1,
+      "Function_ID": "P01(부재)",
+      "Content": "주인공이 범죄 조직과 격렬히 싸우던 도중, 그들이 인공지능 시스템을 사용하고 있다는 사실을 발견하게 된다.",
+      "Involved_Characters": [
+        "CHAR_01"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "호기심",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "주인공이 인공지능의 존재를 알게 되는 중간 반전"
+    },
+    {
+      "Node_ID": "N_005",
+      "Sequence_Index": 11.2,
+      "Function_ID": "P01(부재)",
+      "Content": "주인공은 인공지능과의 싸움에 집중하게 되고, 이 인공지능을 조종하는 악의적인 군중의 정체를 알게 된다.",
+      "Involved_Characters": [
+        "CHAR_01"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "호기심",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "주인공이 군중과의 대결을 통해 인공지능의 진짜 정체를 밝혀내는 과정"
+    },
+    {
+      "Node_ID": "N_006",
+      "Sequence_Index": 11.3,
+      "Function_ID": "P01(부재)",
+      "Content": "주인공은 군중과 대결하며 범죄 조직을 무너뜨리고, 사회에 경고 메시지를 남긴다.",
+      "Involved_Characters": [
+        "CHAR_01"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "호기심",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "주인공의 최종 대결과 결말"
+    }
+  ]
+}

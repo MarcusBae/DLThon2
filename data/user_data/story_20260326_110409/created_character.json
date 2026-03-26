@@ -1,0 +1,11 @@
+{
+  "characters": [
+    {
+      "char_id": "CHAR_01",
+      "name": "평범한 직장인",
+      "char_role": "주인공",
+      "dominant_trait": "호기심",
+      "forbidden_action": "범죄 조직과의 직접적인 대결"
+    }
+  ]
+}
