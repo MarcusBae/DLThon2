@@ -169,6 +169,8 @@ from src.graph_manager import NarrativeGraphManager
 from src.mapper_agent import MapperAgent
 from langchain_core.messages import HumanMessage, AIMessage
 from src.tools import load_worldview, load_characters, load_plot, ensure_font
+from src.validator_agent import ValidatorAgent
+from src.report_view import render_validation_report
 
 load_dotenv()
 
@@ -245,6 +247,16 @@ def remove_story_from_registry(story_id: str):
         _ = stories_dict.pop(story_id, None)
         registry["stories"] = stories_dict
         save_story_registry(registry)
+
+@st.dialog("서사 논리 검증 보고서", width="large")
+def show_validation_report_dialog(story_dir: str):
+    try:
+        validator = ValidatorAgent(story_dir=story_dir)
+        render_validation_report(validator)
+    except Exception as e:
+        import traceback
+        st.error(f"검증 중 오류 발생: {str(e)}")
+        st.code(traceback.format_exc())
 
 @st.dialog("스토리 삭제 확인")
 def confirm_delete_dialog(sid):
@@ -568,19 +580,28 @@ def show_chat():
     # Source Panel (Right)
     # ---------------------------------------------------------
     with col_data:
-        st.header("📝 창작 데이터 (Master Data)")
+        h_col1, h_col2 = st.columns([6, 4], vertical_alignment="bottom")
+        with h_col1:
+            st.header("📝 창작 데이터")
+        with h_col2:
+            if st.button("🔬 논리 검증 보고서", use_container_width=True, type="primary"):
+                st.session_state.force_reopen_dialog = True
+                
+        if st.session_state.get("force_reopen_dialog", False):
+            st.session_state.force_reopen_dialog = False
+            show_validation_report_dialog(user_data_path)
         
         res = st.session_state.current_state
         
         def get_master_data(key, file_name, loader):
-            if res and res.get('master_data', {}).get(key):
-                return res['master_data'][key]
             file_path = os.path.join(user_data_path, file_name)
             if os.path.exists(file_path):
                 try:
                     return loader(file_path)
                 except Exception:
-                    return None
+                    pass
+            if res and res.get('master_data', {}).get(key):
+                return res['master_data'][key]
             return None
 
         wv_data = get_master_data('worldview', 'created_worldview.json', load_worldview)

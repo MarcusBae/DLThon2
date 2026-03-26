@@ -129,6 +129,12 @@ def generator_node(state: NarrativeGraphState):
         interaction_rules = {}
         
     rules_text = "\n    ".join([f"- {v}" for k, v in interaction_rules.items()]) if interaction_rules else "- 인터뷰 스타일 유지"
+    rules_text += (
+        "\n\n**[CRITICAL PLOT REGULATION]**\n"
+        "사용자가 플롯 전개/서사 구조를 추가하거나 변경해 달라고 요청할 경우, 절대 곧바로 JSON 형식 데이터를 출력하여 플롯을 자동 저장시키지 마세요!\n"
+        "반드시 먼저 '그럼 플롯 노드를 [제안하는 내용] 이렇게 바꿀까요?'라고 질문하고 멈추세요.\n"
+        "사용자가 '좋아', '어', '저장해', '승인' 등 명시적으로 동의(Confirm)한 경우에만 비로소 JSON 블록을 반환하여 데이터에 등록하세요."
+    )
     
     # 2. 동적 플롯 이론 로드 및 마일스톤 추출
     theory_type = state.get('master_data', {}).get('theory_type', 'THEORY_PROPP_VOGLER_HYBRID')
@@ -377,7 +383,7 @@ def update_node(state: NarrativeGraphState):
         }},
         "Plot_Nodes": [
           {{
-            "Node_ID": "N_001",
+            "Node_ID": "기존 노드 수정시 기존 ID(예: N_005)기입, 신규 추가시 빈칸",
             "Sequence_Index": 10.0,
             "Function_ID": "<반드시 3. 플롯의 해당 단계 '가능 함수' 중 하나를 정확히 복사해서 기입할 것>",
             "Content": "해당 단계에서 일어난 구체적 사건 요약",
@@ -390,28 +396,47 @@ def update_node(state: NarrativeGraphState):
       }}
     }}
     
-    오직 순수한 JSON만 출력하세요. 데이터가 충분하지 않다면 기존 데이터를 유지하거나 빈 항목으로 두세요. 마크다운 언어 태그(```json 등)를 사용하지 마세요. 방금 전 대화에서 새롭게 확정된 진행 단계(단일 노드)만 **새로 추가**할 것. 'description' 필드와 'features' 필드를 최대한 구체적으로 채워주세요.
-    주의: Function_ID에는 임의의 값을 적지 말고, 반드시 위 3. 플롯에 제공된 '가능 함수' 목록에 있는 텍스트(예: P01(부재), STC_OPENING 등)를 그대로 써야 합니다.
+    오직 순수한 JSON만 출력하세요. 데이터가 충분하지 않다면 빈 항목으로 두세요. 마크다운 언어 태그(```json 등)를 사용하지 마세요. 기존 플롯 노드를 수정/변경하는 경우 반드시 기존의 Node_ID를 포함해 작성하세요. 완전한 신규 사건이면 Node_ID를 ""로 두세요.
+    주의: Function_ID에는 임의의 값을 적지 말고, 반드시 위 3. 플롯에 제공된 '가능 함수' 목록에 있는 텍스트를 고르세요.
     Sequence_Index 부여 규칙: 각 사건은 [마일스톤 순서][함수 순서].0 의 기본값을 가집니다 (예: 2막 3번째 함수면 23.0). 같은 함수의 사건이 여러 개라면 23.1, 23.2 로 증가시키며, 기존 23.8과 23.9 사이에 발생한 중간 사건이라면 23.85 처럼 소수점을 지정하세요.
     """)
     
+    is_plot_context = False
+    if messages:
+        for m in messages[-3:]:
+            if "플롯" in m.content or "N_" in m.content or "노드" in m.content:
+                is_plot_context = True
+                break
+                
+    max_retries = 3 if is_plot_context else 1
+    data = {}
+    plot_update_msg = ""
+    
+    for attempt in range(max_retries):
+        try:
+            res = llm.invoke([extract_msg] + messages[-4:])
+            content = str(res.content)
+            
+            if "```json" in content: content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content: content = content.split("```")[1].split("```")[0].strip()
+            
+            data = json.loads(content)
+            if not isinstance(data, dict):
+                if isinstance(data, list) and len(data) > 0: data = data[0]
+                else: data = {}
+                
+            if is_plot_context:
+                n_list = data.get("plot_data", {}).get("Plot_Nodes", [])
+                if not n_list and attempt < max_retries - 1:
+                    continue
+                elif not n_list and attempt == max_retries - 1:
+                    plot_update_msg = "❌ [시스템] 3회 시도했으나 플롯 정보 추출에 실패했습니다. 대화를 통해 다시 확정해주세요."
+            break
+        except Exception as e:
+            if attempt == max_retries - 1 and is_plot_context:
+                plot_update_msg = "❌ [시스템] 3회 시도했으나 플롯 업데이트에 실패했습니다 (JSON 파싱 오류)."
+                
     try:
-        res = llm.invoke([extract_msg] + messages[-4:])
-        content = str(res.content)
-        
-        # ```json ... ``` 블록 제거
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0].strip()
-        
-        data = json.loads(content)
-        if not isinstance(data, dict):
-            if isinstance(data, list) and len(data) > 0:
-                data = data[0]
-            else:
-                data = {}
-        
         print(f"--- [update_node] Extracted data keys: {list(data.keys()) if isinstance(data, dict) else 'N/A'}")
         
         # 2. 파일 저장 로드 및 업데이트
@@ -489,10 +514,26 @@ def update_node(state: NarrativeGraphState):
                     existing_plot_data["Plot_Metadata"].update(new_plot_data["Plot_Metadata"])
                     
                 new_nodes = new_plot_data.get("Plot_Nodes", [])
+                nodes_added_or_updated = 0
+                
                 if isinstance(new_nodes, list):
                     for n in new_nodes:
                         if isinstance(n, dict):
-                            # 중복 (유사도 80% 이상) 텍스트 검사기
+                            extracted_id = n.get("Node_ID", "")
+                            is_update = False
+                            
+                            # 기존 노드 업데이트인지 확인
+                            if extracted_id and extracted_id.startswith("N_"):
+                                for i, ex_n in enumerate(existing_plot_data["Plot_Nodes"]):
+                                    if isinstance(ex_n, dict) and ex_n.get("Node_ID") == extracted_id:
+                                        existing_plot_data["Plot_Nodes"][i].update(n)
+                                        existing_plot_data["Plot_Nodes"][i]["Node_ID"] = extracted_id # 아이디 보존
+                                        is_update = True
+                                        nodes_added_or_updated += 1
+                                        break
+                            if is_update: continue
+                        
+                            # 신규 노드 중복 검사
                             is_dup = False
                             for ex_n in existing_plot_data.get("Plot_Nodes", []):
                                 if isinstance(ex_n, dict):
@@ -525,31 +566,38 @@ def update_node(state: NarrativeGraphState):
                                             if calc_seq > 0: break
                                         break
                                         
-                            if calc_seq > 0:
-                                llm_seq = float(n.get("Sequence_Index", 0.0))
-                                # LLM이 현재 Function_ID의 대역(calc_seq의 정수부) 내에서 소수점(예: 23.85)을 지정했다면 존중
-                                if int(llm_seq) == int(calc_seq):
-                                    n["Sequence_Index"] = llm_seq
+                            if calc_seq <= 0.0:
+                                fallback_seq = float(n.get("Sequence_Index", (len(existing_plot_data.get("Plot_Nodes", [])) + 1) * 10.0))
+                                calc_seq = round(fallback_seq, 1)
+
+                            llm_seq = float(n.get("Sequence_Index", 0.0))
+                            # LLM이 현재 Function_ID의 대역(calc_seq의 정수부) 내에서 소수점(예: 23.85)을 지정했다면 존중
+                            if int(llm_seq) == int(calc_seq):
+                                n["Sequence_Index"] = llm_seq
+                            else:
+                                # 파이썬에서 자동 순차 소수점 할당 로직
+                                same_base_seqs = [
+                                    float(old_n.get("Sequence_Index", 0.0)) 
+                                    for old_n in existing_plot_data["Plot_Nodes"] 
+                                    if int(float(old_n.get("Sequence_Index", 0.0))) == int(calc_seq)
+                                ]
+                                if not same_base_seqs:
+                                    n["Sequence_Index"] = calc_seq
                                 else:
-                                    # 파이썬에서 자동 순차 소수점 할당 로직
-                                    same_base_seqs = [
-                                        float(old_n.get("Sequence_Index", 0.0)) 
-                                        for old_n in existing_plot_data["Plot_Nodes"] 
-                                        if int(float(old_n.get("Sequence_Index", 0.0))) == int(calc_seq)
-                                    ]
-                                    if not same_base_seqs:
-                                        n["Sequence_Index"] = calc_seq
+                                    max_seq = max(same_base_seqs)
+                                    if max_seq == calc_seq:
+                                        n["Sequence_Index"] = round(calc_seq + 0.1, 2)
                                     else:
-                                        max_seq = max(same_base_seqs)
-                                        if max_seq == calc_seq:
-                                            n["Sequence_Index"] = calc_seq + 0.1
-                                        else:
-                                            next_seq = max_seq + 0.1
-                                            if next_seq >= calc_seq + 1.0:
-                                                next_seq = max_seq + 0.01
-                                            n["Sequence_Index"] = round(next_seq, 2)
+                                        next_seq = max_seq + 0.1
+                                        if next_seq >= calc_seq + 1.0:
+                                            next_seq = max_seq + 0.01
+                                        n["Sequence_Index"] = round(next_seq, 2)
                                 
                             existing_plot_data["Plot_Nodes"].append(n)
+                            nodes_added_or_updated += 1
+                            
+                if is_plot_context and nodes_added_or_updated > 0:
+                    plot_update_msg = "✨ [시스템 안내] 생성한 플롯 업데이트를 완료하였습니다."
                             
             with open(plot_file_path, "w", encoding="utf-8") as f:
                 json.dump(existing_plot_data, f, ensure_ascii=False, indent=2)
@@ -558,8 +606,15 @@ def update_node(state: NarrativeGraphState):
         else:
             new_master["plot_nodes"] = existing_plot_data.get("Plot_Nodes", [])
         
+        from langchain.schema import AIMessage
+        new_msgs = []
+        if plot_update_msg:
+            new_msgs.append(AIMessage(content=plot_update_msg))
+            
+        with open("extract_debug.json", "w", encoding="utf-8") as df:
+            json.dump({"raw_data": data, "update_msg": plot_update_msg}, df, ensure_ascii=False, indent=2)
         
-        return {"master_data": new_master, "next_node": "response_check"}
+        return {"master_data": new_master, "messages": new_msgs, "next_node": "response_check"}
     except Exception as e:
         print(f"Error in update_node: {e}")
         return {"next_node": "response_check"}

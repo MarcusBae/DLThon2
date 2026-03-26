@@ -1,18 +1,22 @@
 {
   "Plot_Metadata": {
     "Story_ID": "story_20260326_090538",
-    "Title": "스토리 제목",
+    "Title": "잃어버린 기억의 조각",
     "Applied_Structure": "THEORY_PROPP_VOGLER_HYBRID",
     "Main_Characters": {
       "Protagonist_ID": "CHAR_01",
       "Antagonist_ID": "CHAR_03"
     },
     "Core_Deficiency": {
-      "Immediate_Lack": "정체성",
-      "Fundamental_Lack": "사랑과 신뢰"
+      "Immediate_Lack": "잃어버린 기억",
+      "Fundamental_Lack": "가족과의 관계"
     },
     "Tags": {
-      "Topics": [],
+      "Topics": [
+        "복수",
+        "가족",
+        "자아 발견"
+      ],
       "Polarity": "Neutral"
     },
     "Validation_Status": {
@@ -25,39 +29,47 @@
       "Node_ID": "N_001",
       "Sequence_Index": 23.0,
       "Function_ID": "P11(출발)",
-      "Content": "부서진 검을 들고 서 있는 은인(진원수)의 밑에서 자란 지유가 잃어버린 기억을 찾기 위해 모험을 떠남",
+      "Content": "부서진 검을 들고 서 있는 은인(진짜 원수)의 밑에서 자란 지유가 잃어버린 기억을 찾기 위해 모험을 떠남.",
       "Involved_Characters": [
         "CHAR_01"
       ],
       "Background_World_ID": "WORLD_01",
-      "Validation_Data": {},
-      "Memo": "기억 상실과 여정의 시작"
+      "Validation_Data": {
+        "Required_Trait": "결단력",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "지유의 모험의 시작"
     },
     {
       "Node_ID": "N_002",
       "Sequence_Index": 21.0,
       "Function_ID": "P09(중재)",
-      "Content": "자신을 챙기던 은인이 사실 진짜 원수였고, 진원수의 이간질로 인해 원수로 오해하던 사람이 친아버지 용철이라는 진실이 드러남",
+      "Content": "여정 도중, 자신을 챙기던 은인 주변에서 수상한 단서(잃어버린 검의 조각 등)를 발견하고, 친아버지 용철에 대한 소문을 들으며 과거에 대한 의구심을 품기 시작함.",
       "Involved_Characters": [
         "CHAR_01",
-        "CHAR_02",
-        "CHAR_03"
+        "CHAR_02"
       ],
       "Background_World_ID": "WORLD_01",
-      "Validation_Data": {},
-      "Memo": "후반 반전 요소"
+      "Validation_Data": {
+        "Required_Trait": "결단력",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "비밀에 대한 첫 번째 의심 (중반부 복선)"
     },
     {
       "Node_ID": "N_003",
-      "Sequence_Index": 34.0,
+      "Sequence_Index": 34.1,
       "Function_ID": "P19(결핍 해소)",
-      "Content": "지유는 분노를 극복하고 원망해온 세월을 반성하며 가족에게 집중하는 성숙한 인물로 성장함",
+      "Content": "지유는 분노를 극복하고 원망해온 세월을 반성하며 가족에게 집중하는 성숙한 인물로 성장함.",
       "Involved_Characters": [
         "CHAR_01"
       ],
       "Background_World_ID": "WORLD_01",
-      "Validation_Data": {},
-      "Memo": "감정적 성장과 결말"
+      "Validation_Data": {
+        "Required_Trait": "결단력",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "지유의 성장"
     },
     {
       "Node_ID": "N_004",
@@ -74,7 +86,121 @@
         "Required_Trait": "결단력",
         "Effect_Type": "NONE"
       },
-      "Memo": "지유는 복수를 다짐하게 된다."
+      "Memo": "갈등의 정점"
+    },
+    {
+      "Node_ID": "N_005",
+      "Sequence_Index": 23.1,
+      "Function_ID": "P11(출발)",
+      "Content": "부서진 검을 들고 서 있는 지유가 자신의 잃어버린 기억을 찾기 위해 길을 떠난다.",
+      "Involved_Characters": [
+        "CHAR_01"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "결단력",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "지유의 모험의 시작을 알리는 장면"
+    },
+    {
+      "Node_ID": "N_006",
+      "Sequence_Index": 34.0,
+      "Function_ID": "P19(결핍 해소)",
+      "Content": "이야기의 거대한 대결말. 지유는 잃어버린 검의 마지막 조각을 맞추며, 평생 자신을 챙기던 은인이 진짜 원수였고 원수라 굳게 믿어온 이가 사실 자신의 친아버지 용철이라는 모든 진실을 깨닫게 된다. 서사의 최고조에 달하며 이야기가 결말을 맺는다.",
+      "Involved_Characters": [
+        "CHAR_01",
+        "CHAR_02",
+        "CHAR_03"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "결단력",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "진실을 깨닫는 진정한 대결말"
+    },
+    {
+      "Node_ID": "N_007",
+      "Sequence_Index": 34.2,
+      "Function_ID": "P19(결핍 해소)",
+      "Content": "지유는 진짜 원수가 은인이었고, 원수라 여겼던 사람이 자신의 아버지라는 사실을 깨닫는다.",
+      "Involved_Characters": [
+        "CHAR_01",
+        "CHAR_02",
+        "CHAR_03"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "호기심",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "지유의 진실 깨달음"
+    },
+    {
+      "Node_ID": "N_008",
+      "Sequence_Index": 21.1,
+      "Function_ID": "P09(중재)",
+      "Content": "지유는 진짜 원수와의 대화 중 우연히 과거의 단서를 발견하고, 용철에 대한 의구심을 품기 시작한다.",
+      "Involved_Characters": [
+        "CHAR_01",
+        "CHAR_03"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "호기심",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "지유가 진짜 원수와의 대화에서 단서를 발견하는 장면"
+    },
+    {
+      "Node_ID": "N_009",
+      "Sequence_Index": 34.1,
+      "Function_ID": "P19(결핍 해소)",
+      "Content": "지유는 진짜 원수가 자신의 은인이라는 사실과 용철이 자신의 아버지라는 진실을 깨닫게 된다.",
+      "Involved_Characters": [
+        "CHAR_01",
+        "CHAR_02",
+        "CHAR_03"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "호기심",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "지유가 진실을 깨닫는 장면"
+    },
+    {
+      "Node_ID": "N_010",
+      "Sequence_Index": 21.2,
+      "Function_ID": "P09(중재)",
+      "Content": "지유는 진짜 원수가 과거에 용철과의 관계를 기록한 일기나 편지를 발견하게 된다.",
+      "Involved_Characters": [
+        "CHAR_01",
+        "CHAR_03"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "결단력",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "지유가 진짜 원수의 정체를 알게 되는 중요한 단서"
+    },
+    {
+      "Node_ID": "N_011",
+      "Sequence_Index": 21.3,
+      "Function_ID": "P09(중재)",
+      "Content": "진짜 원수가 지유에게 용철을 의심하게 만들기 위해 그들 간의 과거를 왜곡하여 설명한다.",
+      "Involved_Characters": [
+        "CHAR_01",
+        "CHAR_03"
+      ],
+      "Background_World_ID": "WORLD_01",
+      "Validation_Data": {
+        "Required_Trait": "결단력",
+        "Effect_Type": "NONE"
+      },
+      "Memo": "진짜 원수가 지유를 이간질하는 장면"
     }
   ]
 }

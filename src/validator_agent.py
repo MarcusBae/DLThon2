@@ -1,7 +1,9 @@
 # validator_agent.py
-"""Logic, causality, and internal consistency verification agent."""
+"""Logic, causality, internal consistency, and completion metric validation agent."""
 
 import os
+import json
+import datetime
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -12,15 +14,13 @@ from collections import defaultdict
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from src.tools import load_worldview, load_characters, load_plot
+from src.constraint_solver import NarrativeConstraintSolver
 
-# -----------------
-# 1단계 검증용 스키마
-# -----------------
 class ConflictItem(BaseModel):
     entity_1_id: str = Field(description="첫 번째 충돌 주체 ID (예: CHAR_01, N_001, RULE_1)")
-    entity_2_id: str = Field(description="두 번째 충돌 주체 ID (예: CHAR_02, N_003, RULE_2)")
-    severity: float = Field(description="예외 규칙이나 상황설정으로 극복 가능한 가벼운 충돌이면 0.3, 아예 대립되는 심각한 충돌이면 1.0")
-    reason: str = Field(description="충돌이 발생한 이유 설명")
+    entity_2_id: str = Field(description="두 번째 충돌 주체 ID (예: N_002)")
+    severity: float = Field(description="가벼운 충돌(상황으로 극복 가능)이면 0.3, 심각한 모순이면 1.0 (트라우마 극복 등 정당한 설정은 0.0으로 제외)")
+    reason: str = Field(description="충돌 사유 및 논리적 붕괴 설명")
 
 class ConflictReport(BaseModel):
     conflicts: List[ConflictItem] = Field(description="발견된 충돌 목록", default_factory=list)
@@ -29,146 +29,330 @@ class ConflictReport(BaseModel):
 class ValidatorAgent:
     def __init__(self, story_dir: str):
         self.story_dir = story_dir
-        self.llm = ChatOpenAI(model="gpt-4o-mini", temperature=0) # 비용 절감을 위해 mini 사용 권장 (필요시 gpt-4o 변경)
+        self.llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
         self.structured_llm = self.llm.with_structured_output(ConflictReport)
         
-        # 1. 자동 데이터 매핑
-        self.worldview = None
-        self.character_set = None
-        self.plot = None
+        self.wv_path = os.path.join(story_dir, "created_worldview.json")
+        self.ch_path = os.path.join(story_dir, "created_character.json")
+        self.pl_path = os.path.join(story_dir, "created_plot.json")
+        self.cache_path = os.path.join(story_dir, "validation_history.json")
         
-        wv_path = os.path.join(story_dir, "created_worldview.json")
-        ch_path = os.path.join(story_dir, "created_character.json")
-        pl_path = os.path.join(story_dir, "created_plot.json")
+        self.worldview = load_worldview(self.wv_path) if os.path.exists(self.wv_path) else None
+        self.character_set = load_characters(self.ch_path) if os.path.exists(self.ch_path) else None
+        self.plot = load_plot(self.pl_path) if os.path.exists(self.pl_path) else None
         
-        if os.path.exists(wv_path): self.worldview = load_worldview(wv_path)
-        if os.path.exists(ch_path): self.character_set = load_characters(ch_path)
-        if os.path.exists(pl_path): self.plot = load_plot(pl_path)
+        # Determine theory type from plot metadata if available
+        theory_type = "THEORY_PROPP_VOGLER_HYBRID"
+        if self.plot and hasattr(self.plot, 'Plot_Metadata'):
+            if isinstance(self.plot.Plot_Metadata, dict):
+                theory_type = self.plot.Plot_Metadata.get("Applied_Structure", theory_type)
+            elif hasattr(self.plot.Plot_Metadata, "Applied_Structure"):
+                theory_type = self.plot.Plot_Metadata.Applied_Structure
+        
+        try:
+            self.solver = NarrativeConstraintSolver(theory_type=theory_type)
+        except Exception:
+            self.solver = NarrativeConstraintSolver()
+            
+        self.entity_map = {}
+
+    def _get_mtime_iso(self, path):
+        if os.path.exists(path):
+            return datetime.datetime.fromtimestamp(os.path.getmtime(path)).isoformat()
+        return None
+
+    def get_timestamps(self):
+        return {
+            "worldview": self._get_mtime_iso(self.wv_path),
+            "characters": self._get_mtime_iso(self.ch_path),
+            "plot_nodes": self._get_mtime_iso(self.pl_path),
+            "report": self._get_mtime_iso(self.cache_path)
+        }
+
+    def is_report_stale(self) -> bool:
+        ts = self.get_timestamps()
+        rt = ts["report"]
+        if not rt: return True
+        
+        for k in ["worldview", "characters", "plot_nodes"]:
+            if ts[k] and ts[k] > rt:
+                return True
+        return False
+
+    def load_history(self) -> list:
+        if os.path.exists(self.cache_path):
+            try:
+                with open(self.cache_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except:
+                pass
+        return []
+
+    def _save_history(self, new_report: dict):
+        history = self.load_history()
+        history.append(new_report)
+        with open(self.cache_path, "w", encoding="utf-8") as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+
+    def _check_physical_completeness(self):
+        char_total = 0; char_missing = 0
+        if self.character_set and hasattr(self.character_set, 'characters'):
+            for c in self.character_set.characters:
+                char_total += 5
+                if not getattr(c, 'name', None): char_missing += 1
+                if not getattr(c, 'char_role', None): char_missing += 1
+                if not getattr(c, 'initial_lack', None): char_missing += 1
+                if not getattr(c, 'dominant_trait', None): char_missing += 1
+                if not getattr(c, 'forbidden_action', None): char_missing += 1
+                
+                name = getattr(c, 'name', c.char_id)
+                self.entity_map[c.char_id] = {
+                    "name": f"{c.char_id} ({name})",
+                    "tooltip": f"결핍: {getattr(c, 'initial_lack', '')} | 특성: {getattr(c, 'dominant_trait', '')}"
+                }
+        
+        world_total = 0; world_missing = 0
+        if self.worldview and hasattr(self.worldview, 'rules'):
+            for i, r in enumerate(self.worldview.rules):
+                world_total += 3
+                if not getattr(r, 'rule_title', None): world_missing += 1
+                if not getattr(r, 'description', None): world_missing += 1
+                if not getattr(r, 'forbidden_events', None): world_missing += 1
+                
+                rid = f"RULE_{i+1}"
+                title = getattr(r, 'rule_title', rid)
+                self.entity_map[rid] = {
+                    "name": f"{rid} ({title})",
+                    "tooltip": getattr(r, 'description', '')
+                }
+                
+        plot_total = 0; plot_missing = 0
+        if self.plot and hasattr(self.plot, 'Plot_Nodes'):
+            for n in self.plot.Plot_Nodes:
+                plot_total += 2
+                content = getattr(n, 'Content', '')
+                if not content: plot_missing += 1
+                if not getattr(n, 'Function_ID', None): plot_missing += 1
+                
+                nid = getattr(n, 'Node_ID', '')
+                snip = content[:30] + "..." if len(content) > 30 else content
+                self.entity_map[nid] = {
+                    "name": f"{nid} ({snip})",
+                    "tooltip": content
+                }
+                
+        def calc(tot, ms): return round(((tot - ms) / tot * 100), 1) if tot > 0 else 100.0
+        
+        return {
+            "Characters": calc(char_total, char_missing),
+            "Worldview": calc(world_total, world_missing),
+            "PlotNodes": calc(plot_total, plot_missing)
+        }
 
     def _analyze_conflicts_llm(self, category_name: str, entities_text: str, total_comparisons: int) -> dict:
-        """LLM을 호출하여 텍스트 간 논리 충돌을 분석하고 오류율을 산출합니다."""
         if total_comparisons <= 0:
             return {"violation_rate": 0.0, "troublemakers": [], "details": [], "total_comps": 0, "error_sum": 0.0}
             
         prompt = ChatPromptTemplate.from_messages([
             ("system", 
-             "당신은 치밀한 서사 논리 검증관입니다. 제공된 {category_name} 목록 내에서 서로 모순되거나 충돌하는 설정이 있는지 찾아내세요.\n"
-             "예시1(캐릭터): A가 B를 부모라고 했는데, B가 A를 할아버지라 하면 1.0 충돌\n"
-             "예시2(플롯): N_01에서 잃어버린 물건을 N_03에서 그대로 사용하고 있다면 1.0 충돌\n"
-             "예시3(세계관): 마법이 금지된 세계인데 마법 사용 규칙이 있다면 1.0 충돌\n"
-             "가벼운 충돌(우연한 상황이나 예외 처리로 수습 가능)은 0.3, 심각한 모순은 1.0으로 분류하세요.\n"
-             "충돌이 없으면 빈 배열을 반환하세요."),
+             "당신은 치밀한 서사 논리 검증관입니다. 제공된 {category_name} 목록 내에서 서로 모순되거나 충돌하는 설정이 있는지 찾으세요.\n"
+             "가벼운 충돌(예외가능)은 0.3, 치명적 논리 오류는 1.0 충돌로 계산하세요.\n"
+             "위반율 계산을 위해 충돌이 없으면 빈 배열을 반환하세요."),
             ("human", "분석할 {category_name} 텍스트:\n\n{entities_text}")
         ])
         
         chain = prompt | self.structured_llm
         report = chain.invoke({"category_name": category_name, "entities_text": entities_text})
         
-        # 만약 report가 None이거나 conflicts 속성이 없는 경우 방어 코딩
+        return self._process_llm_report(report, total_comparisons)
+
+    def _analyze_cross_domain_llm(self, plot_text: str, bg_text: str, total_comparisons: int, domain_hint: str) -> dict:
+        if total_comparisons <= 0:
+            return {"violation_rate": 0.0, "troublemakers": [], "details": [], "total_comps": 0, "error_sum": 0.0}
+            
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", 
+             f"당신은 크로스도메인 논리 검증관입니다. 플롯 전개 내용이 [{domain_hint}]을(를) 위반했는지 꼼꼼히 대조하세요.\n"
+             ">> 특별 예외 규칙 (Dynamic Trauma Overcoming): <<\n"
+             "만약 해당 플롯이 이야기의 중대한 '전환점(예: CLIMAX, 각성, 결말 등)' 마일스톤에 해당할 때 캐릭터가 자신의 오랜 트라우마나 절대 금기행동을 깨부수는 묘사가 있다면, 이는 오류가 아니라 '트라우마 극복(성장 카타르시스)'으로 간주합니다. 이 경우 충돌로 취급하지 마세요(결과 배제).\n"
+             "전환점이 아닌 평범한 구간에서 위반하면 명백한 1.0 심각 충돌입니다.\n"
+             "가벼운 우연적 충돌은 0.3점입니다."),
+            ("human", "분석할 배경 설정:\n{bg_text}\n\n분석할 플롯 타임라인:\n{plot_text}")
+        ])
+        
+        chain = prompt | self.structured_llm
+        report = chain.invoke({"bg_text": bg_text, "plot_text": plot_text})
+        
+        return self._process_llm_report(report, total_comparisons)
+
+    def _process_llm_report(self, report, total_comparisons):
         if not report or not getattr(report, "conflicts", None):
             return {"violation_rate": 0.0, "troublemakers": [], "details": [], "total_comps": total_comparisons, "error_sum": 0.0}
             
-        # 오류율 계산
         error_sum = sum(c.severity for c in report.conflicts)
         violation_rate = (error_sum / total_comparisons) * 100 if total_comparisons > 0 else 0
         
-        # 트러블메이커 통계 (누가 가장 충돌을 많이 일으키는가)
         trouble_counts = defaultdict(float)
+        details = []
         for c in report.conflicts:
             trouble_counts[c.entity_1_id] += c.severity
             trouble_counts[c.entity_2_id] += c.severity
+            details.append({
+                "entity_1_id": c.entity_1_id,
+                "entity_2_id": c.entity_2_id,
+                "severity": c.severity,
+                "reason": c.reason
+            })
             
-        # 내림차순 정렬
         troublemakers = sorted(trouble_counts.items(), key=lambda x: x[1], reverse=True)
         
         return {
             "violation_rate": violation_rate,
             "troublemakers": troublemakers,
-            "details": report.conflicts,
+            "details": details,
             "total_comps": total_comparisons,
             "error_sum": error_sum
         }
 
-    def validate_phase_1(self) -> dict:
-        """
-        [1단계 검증] 단일 JSON 파일 내 논리적 충돌 스캔
-        비교 횟수(n*(n-1)/2) 기반으로 가중치 오류율 산출 및 문제아 리포팅
-        """
-        results = {}
+    def suggest_corrections(self) -> str:
+        """논리 검증 리포트(과거 캐시)를 바탕으로 모순 해결/수정안을 제안합니다."""
+        history = self.load_history()
+        if not history:
+            return "검증 기록이 없어 수정 제안을 할 수 없습니다."
+        latest = history[-1]
         
-        # 1. 캐릭터 파일 내 검사 (캐릭터 간 관계 및 설정 모순)
-        if getattr(self, 'character_set', None) and getattr(self.character_set, 'characters', []):
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", 
+             "당신은 서사 구조 교정(Correction) 전문가입니다. 다음은 가장 최근의 논리 검증 리포트 오류 내역입니다.\n"
+             "작가가 어떻게 플롯이나 설정을 수정하면 모순을 무난하게 해결할 수 있을지 창의적이고 구체적인 시나리오 2가지를 제안해 주세요. 길지 않고 명확하게 대화체로 작성하세요."),
+            ("human", f"오류 리포트 요약:\n{json.dumps(latest['logical'], ensure_ascii=False)}")
+        ])
+        res = self.llm.invoke(prompt)
+        return str(res.content)
+
+    def _check_phase_2_structural(self) -> dict:
+        """[2단계 검증] OR-Tools 기반 플롯 홀(구조적 인과율 이탈) 검사"""
+        details = []
+        error_sum = 0.0
+        
+        if not self.plot or not getattr(self.plot, 'Plot_Nodes', []):
+           return {"violation_rate": 0.0, "troublemakers": [], "details": [], "total_comps": 0, "error_sum": 0.0}
+           
+        nodes = sorted(self.plot.Plot_Nodes, key=lambda x: getattr(x, 'Sequence_Index', 0))
+        n = len(nodes)
+        comps = n - 1 if n > 1 else 0
+        
+        if comps > 0:
+            trouble_counts = defaultdict(float)
+            for i in range(n - 1):
+                from_id = getattr(nodes[i], 'Function_ID', '')
+                to_id = getattr(nodes[i+1], 'Function_ID', '')
+                if not from_id or not to_id: continue
+                # 예외적으로 직접 파싱이나 수동 조립 노드(P01(부재) 등)의 경우 보정 처리 (간이 무시)
+                if "(" in from_id or "(" in to_id: continue
+                
+                try:
+                    valid_next = self.solver.get_valid_next_ids(from_id)
+                except:
+                    valid_next = []
+                    
+                if valid_next and to_id not in valid_next:
+                    sev = 1.0
+                    error_sum += sev
+                    nid1 = getattr(nodes[i], 'Node_ID', from_id)
+                    nid2 = getattr(nodes[i+1], 'Node_ID', to_id)
+                    details.append({
+                        "entity_1_id": nid1,
+                        "entity_2_id": nid2,
+                        "severity": sev,
+                        "reason": f"이론적 계층 위반: [{from_id}] 이후에는 곧바로 [{to_id}] 단계가 올 수 없습니다. (플롯 홀 발생)"
+                    })
+                    trouble_counts[nid1] += sev
+                    trouble_counts[nid2] += sev
+                    
+            violation_rate = (error_sum / comps) * 100 if comps > 0 else 0.0
+            troublemakers = sorted(trouble_counts.items(), key=lambda x: x[1], reverse=True)
+        else:
+            violation_rate = 0.0
+            troublemakers = []
+            
+        return {
+            "violation_rate": violation_rate,
+            "troublemakers": troublemakers,
+            "details": details,
+            "total_comps": comps,
+            "error_sum": error_sum
+        }
+
+    def generate_report(self) -> dict:
+        phys_scores = self._check_physical_completeness()
+        log_res = {}
+        
+        # 1. 캐릭터
+        if self.character_set and hasattr(self.character_set, 'characters'):
             chars = self.character_set.characters
             n = len(chars)
             comps = (n * (n - 1)) / 2 if n > 1 else 0
             
             char_text = ""
             for c in chars:
-                rel_info = ""
-                if getattr(c, 'char_relationship', None):
-                    rels = [f"{r.target_char_id}({r.relationship_title})" for r in c.char_relationship]
-                    rel_info = " / ".join(rels)
-                char_text += f"---\n[CHAR_ID: {c.char_id}]\n이름: {c.name}\n결핍: {getattr(c, 'initial_lack', '없음')}\n관계: {rel_info}\n특징: {c.dominant_trait}\n금기행동: {getattr(c, 'forbidden_action', '없음')}\n\n"
+                rel_info = " / ".join([f"{r.target_char_id}({r.relationship_title})" for r in getattr(c, 'char_relationship', [])]) if getattr(c, 'char_relationship', None) else "없음"
+                char_text += f"---\n[CHAR_ID: {c.char_id}]\n이름: {c.name}\n결핍: {getattr(c, 'initial_lack', '없음')}\n관계: {rel_info}\n금기행동: {getattr(c, 'forbidden_action', '없음')}\n\n"
+            log_res["Characters"] = self._analyze_conflicts_llm("캐릭터", char_text, comps)
+        else:
+            log_res["Characters"] = {"violation_rate": 0.0, "troublemakers": [], "details": [], "total_comps": 0, "error_sum": 0.0}
             
-            results["Characters"] = self._analyze_conflicts_llm("캐릭터", char_text, comps)
-            
-        # 2. 세계관 파일 내 검사 (규칙 간 상충)
-        if getattr(self, 'worldview', None) and getattr(self.worldview, 'rules', []):
+        # 2. 세계관
+        if self.worldview and hasattr(self.worldview, 'rules'):
             rules = self.worldview.rules
             n = len(rules)
             comps = (n * (n - 1)) / 2 if n > 1 else 0
             
             rule_text = ""
             for i, r in enumerate(rules):
-                # ID가 별도로 없으므로 RULE_숫자 부여
-                rule_id = f"RULE_{i+1}"
                 f_events = ", ".join(r.forbidden_events) if getattr(r, 'forbidden_events', None) else "없음"
-                rule_text += f"---\n[Rule_ID: {rule_id}]\n규칙명: {r.rule_title}\n설명: {r.description}\n절대 금기이벤트: {f_events}\n\n"
-                
-            results["Worldview"] = self._analyze_conflicts_llm("세계관 규칙", rule_text, comps)
+                rule_text += f"---\n[Rule_ID: RULE_{i+1}]\n규칙명: {r.rule_title}\n설명: {r.description}\n금기이벤트: {f_events}\n\n"
+            log_res["Worldview"] = self._analyze_conflicts_llm("세계관 규칙", rule_text, comps)
+        else:
+            log_res["Worldview"] = {"violation_rate": 0.0, "troublemakers": [], "details": [], "total_comps": 0, "error_sum": 0.0}
             
-        # 3. 플롯 파일 내 검사 (타임라인 상의 앞뒤 사건 모순 및 오류)
-        # Sequence_Index 순으로 정렬 후 검사
-        if getattr(self, 'plot', None) and getattr(self.plot, 'Plot_Nodes', []):
-            nodes = sorted(self.plot.Plot_Nodes, key=lambda x: getattr(x, 'Sequence_Index', 0))
+        # 3. 플롯
+        nodes = sorted(self.plot.Plot_Nodes, key=lambda x: getattr(x, 'Sequence_Index', 0)) if getattr(self, 'plot', None) and getattr(self.plot, 'Plot_Nodes', []) else []
+        if nodes:
             n = len(nodes)
             comps = (n * (n - 1)) / 2 if n > 1 else 0
-            
             plot_text = ""
             for pn in nodes:
-                node_id = getattr(pn, 'Node_ID', 'Unknown')
-                plot_text += f"---\n[Node_ID: {node_id}]\n순서: {getattr(pn, 'Sequence_Index', 0)}\n내용: {getattr(pn, 'Content', '')}\n\n"
-                
-            results["PlotNodes"] = self._analyze_conflicts_llm("플롯 노드", plot_text, comps)
+                plot_text += f"---\n[Node_ID: {getattr(pn, 'Node_ID', '')}]\n기능: {getattr(pn, 'Function_ID', '')}\n순서: {getattr(pn, 'Sequence_Index', 0)}\n내용: {getattr(pn, 'Content', '')}\n\n"
+            log_res["PlotNodes"] = self._analyze_conflicts_llm("플롯 노드", plot_text, comps)
+        else:
+            log_res["PlotNodes"] = {"violation_rate": 0.0, "troublemakers": [], "details": [], "total_comps": 0, "error_sum": 0.0}
             
-        return results
-
-if __name__ == "__main__":
-    import json
-    # 테스트용 드라이버 코드
-    test_dir = "../data/user_data/story_20260326_110409"
-    # 현재 디렉토리 구조상 main.py 위치에서 실행될 때를 고려한 안전한 상대 경로
-    if not os.path.exists(test_dir):
-        test_dir = "data/user_data/story_20260326_110409"
-
-    validator = ValidatorAgent(story_dir=test_dir)
-    print("=== [1단계] 문서 내부 논리 충돌 및 모순 검출 실행 ===")
-    res = validator.validate_phase_1()
-    
-    for category, stat in res.items():
-        print(f"\n[{category} 부문 검증 결과]")
-        print(f" - 총 비교 횟수 조합: {stat['total_comps']} 회")
-        print(f" - 누적 에러 점수: {stat['error_sum']:.1f}")
-        print(f" - 위반율(오류율): {stat['violation_rate']:.1f}%")
+        # Phase 2
+        log_res["Phase2_Path"] = self._check_phase_2_structural()
         
-        if stat['details']:
-            print(" - [충돌 상세 내역]")
-            for d in stat['details']:
-                sev_type = "(심각)" if float(d.severity) == 1.0 else "(가벼움)"
-                print(f"   *{sev_type} {d.entity_1_id} vs {d.entity_2_id}: {d.reason}")
-                
-        if stat['troublemakers']:
-            print(" - [! 요주의 트러블메이커 순위]")
-            for tm, score in stat['troublemakers']:
-                print(f"   1위: {tm} (오류기여 점수: {score:.1f})") if stat['troublemakers'][0][0] == tm else print(f"   순위권: {tm} (점수: {score:.1f})")
-
+        # Phase 3
+        if nodes and self.character_set and hasattr(self.character_set, 'characters'):
+            char_bg_text = "== 캐릭터 설정 ==\n" + char_text
+            n_bg = len(self.character_set.characters)
+            log_res["Phase3_CharPlot"] = self._analyze_cross_domain_llm(plot_text, char_bg_text, len(nodes) * n_bg, "캐릭터 금기행동 및 초기 결핍")
+        else:
+            log_res["Phase3_CharPlot"] = {"violation_rate": 0.0, "troublemakers": [], "details": [], "total_comps": 0, "error_sum": 0.0}
+            
+        if nodes and self.worldview and hasattr(self.worldview, 'rules'):
+            world_bg_text = "== 세계관 규칙 ==\n" + rule_text
+            n_bg = len(self.worldview.rules)
+            log_res["Phase3_WorldPlot"] = self._analyze_cross_domain_llm(plot_text, world_bg_text, len(nodes) * n_bg, "세계관 규칙 및 금기이벤트")
+        else:
+            log_res["Phase3_WorldPlot"] = {"violation_rate": 0.0, "troublemakers": [], "details": [], "total_comps": 0, "error_sum": 0.0}
+            
+        new_report = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "timestamps": self.get_timestamps(),
+            "physical": phys_scores,
+            "logical": log_res,
+            "entity_map": self.entity_map
+        }
+        
+        self._save_history(new_report)
+        return new_report
