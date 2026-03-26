@@ -3,6 +3,15 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 # main.py
 
+import builtins
+_original_print = builtins.print
+def safe_print(*args, **kwargs):
+    try:
+        _original_print(*args, **kwargs)
+    except OSError:
+        pass
+builtins.print = safe_print
+
 import streamlit as st
 import pickle
 import glob
@@ -93,6 +102,23 @@ def remove_story_from_registry(story_id: str):
         registry["stories"] = stories_dict
         save_story_registry(registry)
 
+@st.dialog("스토리 삭제 확인")
+def confirm_delete_dialog(sid):
+    st.warning("경고: 되돌릴 수 없는 동작입니다. 정말 이 스토리를 삭제하겠습니까?")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("네, 삭제합니다", type="primary", use_container_width=True):
+            import shutil
+            remove_story_from_registry(sid)
+            shutil.rmtree(os.path.join("data", "user_data", sid), ignore_errors=True)
+            shutil.rmtree(os.path.join("data", "session", sid), ignore_errors=True)
+            if st.session_state.get('active_story_id') == sid:
+                st.session_state.current_page = "home"
+            st.rerun()
+    with col2:
+        if st.button("취소", use_container_width=True):
+            st.rerun()
+
 # =========================================================
 # HOME VIEW
 # =========================================================
@@ -138,6 +164,11 @@ def show_home():
                         with open(os.path.join(user_d_path, "metadata.json"), "w", encoding="utf-8") as mdf:
                             json.dump({"theory_type": plot['id'], "created_at": datetime.datetime.now().isoformat()}, mdf, ensure_ascii=False)
                         
+                        st.session_state.initial_prompt = {
+                            "idea": f"'{plot.get('alias', plot['name'])}' 스타일로 새로운 이야기를 시작하고 싶어.",
+                            "theory": plot['id']
+                        }
+                        
                         register_new_story(story_id)
                         st.rerun()
 
@@ -178,7 +209,14 @@ def show_home():
         valid_stories = []
         import shutil
         plots_file = os.path.join("data", "system", "registered_plots.json")
+        registry_data = get_story_registry()
+        stories_dict = registry_data.get("stories", {})
         for d in story_dirs:
+            if not isinstance(stories_dict, dict) or d not in stories_dict:
+                # stories.json에 없는 고아 폴더는 무시 및 찌꺼기 삭제
+                shutil.rmtree(os.path.join(session_root, d), ignore_errors=True)
+                continue
+                
             cache_file = os.path.join(session_root, d, "session_cache.pkl")
             if os.path.exists(cache_file):
                 try:
@@ -227,7 +265,7 @@ def show_home():
                             else:
                                 title = sid
                             st.markdown(f"<div class='history-card-title'><b>{title}</b></div>", unsafe_allow_html=True)
-                            _, inner_btn, _ = st.columns([1, 4, 1])
+                            _, inner_btn, del_btn = st.columns([1, 4, 1])
                             if inner_btn.button("이어서 쓰기", key=f"resume_{sid}", use_container_width=True):
                                 st.session_state.active_story_id = sid
                                 st.session_state.current_page = "chat"
@@ -241,6 +279,8 @@ def show_home():
                                     st.session_state.current_state = None
                                     st.session_state.chat_ui_messages = []
                                 st.rerun()
+                            if del_btn.button("🗑️", key=f"del_{sid}", help="스토리 삭제", use_container_width=True):
+                                confirm_delete_dialog(sid)
     else:
         st.markdown("<p class='home-empty-msg'>아직 저장된 스토리가 없습니다.</p>", unsafe_allow_html=True)
 
@@ -355,6 +395,12 @@ def show_chat():
                             changed = True
                             
                         if changed:
+                            st.toast("설정이 저장되었습니다.", icon="✅")
+                            
+                    st.divider()
+                    if st.button("🗑️ 스토리 삭제", use_container_width=True, type="primary"):
+                        confirm_delete_dialog(story_id)
+                        if changed:
                             st.rerun()
 
                     st.markdown("---")
@@ -432,18 +478,31 @@ def show_chat():
 
         with st.expander("📚 플롯 서사 구조 (Plot Nodes)", expanded=True):
             if plot_data:
-                if hasattr(plot_data, 'Plot_Nodes'):
-                    history = [node.Node_ID for node in plot_data.Plot_Nodes]
+                history_nodes = []
+                if hasattr(plot_data, 'Plot_Nodes') and plot_data.Plot_Nodes:
+                    history_nodes = plot_data.Plot_Nodes
+                elif isinstance(plot_data, dict) and plot_data.get("Plot_Nodes"):
+                    history_nodes = plot_data.get("Plot_Nodes", [])
                 elif isinstance(plot_data, list):
-                    history = plot_data
-                else:
-                    history = []
+                    history_nodes = plot_data
                 
-                if history:
+                if history_nodes:
                     if res and 'current_section' in res:
                         st.caption(f"**Current Checkpoint:** {res['current_section']}")
-                    for i, node_id in enumerate(history):
-                        st.markdown(f"**Step {i+1}:** `{node_id}`")
+                    
+                    history = []
+                    for i, node in enumerate(history_nodes):
+                        if isinstance(node, dict):
+                            n_id = node.get("Node_ID", f"Step_{i}")
+                            f_id = node.get("Function_ID", "N/A")
+                            content = node.get("Content", "내용 없음")
+                        else:
+                            n_id = getattr(node, "Node_ID", f"Step_{i}")
+                            f_id = getattr(node, "Function_ID", "N/A")
+                            content = getattr(node, "Content", "내용 없음")
+                        
+                        st.markdown(f"**Step {i+1} [{n_id}]**: `{f_id}` - {content}")
+                        history.append(n_id)
                         
                     st.markdown("---")
                     st.markdown("**Causal Plot Graph**")
@@ -533,8 +592,11 @@ def show_chat():
                     except Exception as e:
                         import traceback
                         tb_str = traceback.format_exc()
-                        print(f"--- DEBUG: CAUGHT EXCEPTION: {tb_str}")
-                        ai_response = f"**오류가 발생했습니다:** {str(e)}"
+                        # Windows 콘솔 인코딩 문제 방지를 위해 파일에 로깅하거나 무시합니다.
+                        with open("error_log.txt", "a", encoding="utf-8") as f:
+                            f.write(f"\n--- DEBUG: CAUGHT EXCEPTION ---\n{tb_str}\n")
+                        st.error("서버 처리 중 일시적인 오류가 발생했습니다. 브라우저를 새로고침(F5)하여 가장 마지막 정상 상태에서 다시 시도해주세요.")
+                        st.stop()
                         
                     st.markdown(ai_response)
                     st.session_state.chat_ui_messages.append({"role": "assistant", "content": ai_response})

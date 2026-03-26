@@ -10,7 +10,7 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Any, List, Optional, Literal, Mapping, Sequence
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from langchain_core.tools import tool
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
@@ -28,39 +28,39 @@ warnings.filterwarnings("ignore")
 @dataclass
 class WorldConstant:
     """세계관 내 불변하는 환경 변수"""
-    name: str
-    value: str
+    name: str = "unknown"
+    value: str = ""
 
 @dataclass
 class WorldRule:
     """세계관의 물리적/사회적 규칙과 위반 조건"""
-    rule_title: str
-    description: str
-    forbidden_events: List[str]
+    rule_title: str = "unknown"
+    description: str = ""
+    forbidden_events: List[str] = field(default_factory=list)
 
 @dataclass
 class Worldview:
     """전체 세계관 데이터 구조"""
-    world_id: str
-    genre: str
-    features: dict
-    constants: List[WorldConstant]
-    rules: List[WorldRule]
+    world_id: str = "WORLD_UNKNOWN"
+    genre: str = "unknown"
+    features: dict = field(default_factory=dict)
+    constants: List[WorldConstant] = field(default_factory=list)
+    rules: List[WorldRule] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: Any) -> "Worldview":
+        # Ensure data is a dictionary
+        if isinstance(data, list) and len(data) > 0:
+            data = data[0]
+        
         if not isinstance(data, dict):
-            # 만약 리스트라면 첫 번째 요소 사용 시도
-            if isinstance(data, list) and len(data) > 0:
-                data = data[0]
-            else:
-                data = {}
+            data = {}
         
         constants_raw = data.get("constants", [])
-        constants = [WorldConstant(**c) for c in constants_raw] if isinstance(constants_raw, list) else []
+        constants = [WorldConstant(**c) for c in constants_raw if isinstance(c, dict)] if isinstance(constants_raw, list) else []
         
         rules_raw = data.get("rules", [])
-        rules = [WorldRule(**r) for r in rules_raw] if isinstance(rules_raw, list) else []
+        rules = [WorldRule(**r) for r in rules_raw if isinstance(r, dict)] if isinstance(rules_raw, list) else []
         
         return cls(
             world_id=data.get("world_id", "미정"),
@@ -82,21 +82,21 @@ class Worldview:
 @dataclass
 class CharacterRelationship:
     """캐릭터 간의 관계 정보"""
-    category: str
-    relationship_title: str
-    target_char_id: str
-    emotions: List[str]
+    category: str = "unknown"
+    relationship_title: str = "unknown"
+    target_char_id: str = "unknown"
+    emotions: List[str] = field(default_factory=list)
 
 @dataclass
 class Character:
     """개별 캐릭터 데이터 구조"""
-    char_id: str
-    name: str
-    char_role: str
-    dominant_trait: str
-    forbidden_action: str
+    char_id: str = "unknown"
+    name: str = "unknown"
+    char_role: str = "unknown"
+    dominant_trait: str = "unknown"
+    forbidden_action: str = "unknown"
     initial_lack: Optional[str] = None
-    char_relationship: Optional[List[CharacterRelationship]] = None
+    char_relationship: Optional[List[CharacterRelationship]] = field(default_factory=list)
 
 @dataclass
 class CharacterSet:
@@ -106,12 +106,15 @@ class CharacterSet:
     @classmethod
     def from_dict(cls, data: Any) -> "CharacterSet":
         chars: List[Character] = []
-        if not isinstance(data, dict):
-            # 만약 리스트 자체가 캐릭터 목록이라면
-            raw_list = data if isinstance(data, list) else []
-        else:
+        
+        # Ensure data is a dictionary containing "characters" or a list itself
+        if isinstance(data, list):
+            raw_list = data
+        elif isinstance(data, dict):
             raw_list = data.get("characters", [])
-            
+        else:
+            raw_list = []
+
         if not isinstance(raw_list, list):
             raw_list = []
 
@@ -119,7 +122,7 @@ class CharacterSet:
             if not isinstance(raw, dict): continue
             
             rels_raw = raw.get("char_relationship", [])
-            rels = [CharacterRelationship(**r) for r in rels_raw] if isinstance(rels_raw, list) else None
+            rels = [CharacterRelationship(**r) for r in rels_raw if isinstance(r, dict)] if isinstance(rels_raw, list) else []
             
             ch = Character(
                 char_id=raw.get("char_id", "unknown"),
@@ -144,7 +147,7 @@ class CharacterSet:
 # --- Plot 관련 모델 ---
 @dataclass
 class MainCharacters:
-    Protagonist_ID: str
+    Protagonist_ID: str = "unknown"
     Antagonist_ID: Optional[str] = None
 
 @dataclass
@@ -154,23 +157,23 @@ class CoreDeficiency:
 
 @dataclass
 class Tags:
-    Topics: List[str]
-    Polarity: Literal["Positive", "Negative", "Neutral"]
+    Topics: List[str] = field(default_factory=list)
+    Polarity: Literal["Positive", "Negative", "Neutral"] = "Neutral"
 
 @dataclass
 class ValidationStatus:
-    Violation_Rate: str
-    Is_Valid: bool
+    Violation_Rate: str = "0%"
+    Is_Valid: bool = True
 
 @dataclass
 class PlotMetadata:
-    Story_ID: str
-    Title: str
-    Author: str
-    Created_At: str
-    Updated_At: str
-    Applied_Structure: str
-    Main_Characters: MainCharacters
+    Story_ID: str = "unknown"
+    Title: str = "Untitled"
+    Author: str = "AI"
+    Created_At: str = ""
+    Updated_At: str = ""
+    Applied_Structure: str = ""
+    Main_Characters: MainCharacters = field(default_factory=MainCharacters)
     Core_Deficiency: Optional[CoreDeficiency] = None
     Tags: Optional[Tags] = None
     Validation_Status: Optional[ValidationStatus] = None
@@ -212,8 +215,14 @@ class Plot:
 
     @classmethod
     def from_dict(cls, data: Any) -> "Plot":
+        # Ensure data is a dictionary
         if not isinstance(data, dict):
-            data = {}
+            # 만약 리스트(ID 목록) 형태라면 최소한의 객체로 변형
+            if isinstance(data, list):
+                nodes_raw = [{"Node_ID": str(item)} for item in data]
+                data = {"Plot_Nodes": nodes_raw}
+            else:
+                data = {}
             
         pm_raw = data.get("Plot_Metadata", {})
         if not isinstance(pm_raw, dict): pm_raw = {}
@@ -244,8 +253,14 @@ class Plot:
         )
 
         nodes: List[PlotNode] = []
-        for raw in data.get("Plot_Nodes", []):
-            if not isinstance(raw, dict): continue
+        plot_nodes_raw = data.get("Plot_Nodes", [])
+        if not isinstance(plot_nodes_raw, list): plot_nodes_raw = []
+        
+        for raw in plot_nodes_raw:
+            if not isinstance(raw, dict): 
+                if isinstance(raw, str):
+                    raw = {"Node_ID": raw}
+                else: continue
             
             cl_raw = raw.get("Causal_Links")
             cl = CausalLinks(**cl_raw) if isinstance(cl_raw, dict) else None
@@ -261,13 +276,17 @@ class Plot:
                 Effect_Type=vu.get("Effect_Type", "Neutral"),
                 State_Update=su,
             )
+            inv_chars = raw.get("Involved_Characters", [])
+            if not isinstance(inv_chars, list):
+                inv_chars = [inv_chars] if isinstance(inv_chars, str) else []
+                
             node = PlotNode(
-                Node_ID=raw.get("Node_ID", "unknown"), 
-                Sequence_Index=raw.get("Sequence_Index", 0),
-                Function_ID=raw.get("Function_ID", ""), 
-                Content=raw.get("Content", ""),
-                Involved_Characters=raw.get("Involved_Characters", []),
-                Background_World_ID=raw.get("Background_World_ID", ""),
+                Node_ID=str(raw.get("Node_ID", "unknown")), 
+                Sequence_Index=float(raw.get("Sequence_Index", 0)),
+                Function_ID=str(raw.get("Function_ID", "")), 
+                Content=str(raw.get("Content", "")),
+                Involved_Characters=inv_chars,
+                Background_World_ID=str(raw.get("Background_World_ID", "")),
                 Validation_Data=vd, 
                 Causal_Links=cl, 
                 Memo=raw.get("Memo"),

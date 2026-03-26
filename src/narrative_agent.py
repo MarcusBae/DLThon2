@@ -74,11 +74,16 @@ def history_node(state: NarrativeGraphState):
     else:
         user_data_path = os.path.join(data_dir, "user_data")
         
+    # metadata.json 로드하여 theory_type 추출
+    metadata = safe_load(load_json, os.path.join(user_data_path, "metadata.json"), {})
+    theory_type = metadata.get("theory_type") or metadata.get("theory_id")
+    
     master_data = {
         "story_id": story_id,
         "worldview": safe_load(load_worldview, os.path.join(user_data_path, "created_worldview.json"), None),
         "characters": safe_load(load_characters, os.path.join(user_data_path, "created_character.json"), None),
-        "plot_nodes": safe_load(load_plot, os.path.join(user_data_path, "created_plot.json"), None)
+        "plot_nodes": safe_load(load_plot, os.path.join(user_data_path, "created_plot.json"), None),
+        "theory_type": theory_type
     }
     idea_note = safe_load(load_json, os.path.join(user_data_path, "idea_note.json"), [])
     
@@ -170,6 +175,11 @@ def generator_node(state: NarrativeGraphState):
     
     task_name = current_step_info.get("task_name", "창작 진행")
     agent_mission = current_step_info.get("agent_action", "사용자의 아이디어를 구체화하세요.")
+    
+    # 만약 플롯 이론이 이미 선택되어 있다면, 지침에서 이론 선택 유도 부분을 무시하도록 명시
+    if theory_type:
+        agent_mission += f"\n(참고: 현재 플롯 이론은 '{theory_type}'으로 이미 확정되었습니다. 사용자에게 어떤 이론을 쓸지 다시 묻지 마세요.)"
+        
     output_reqs = current_step_info.get("output_requirements", [])
     reqs_text = "\n    - ".join(output_reqs) if output_reqs else "없음"
     
@@ -179,7 +189,14 @@ def generator_node(state: NarrativeGraphState):
     worldview = state.get('master_data', {}).get('worldview', {})
     worldview_id = worldview.get('world_id', '미정') if isinstance(worldview, dict) else getattr(worldview, 'world_id', '미정')
     characters = state.get('master_data', {}).get('characters', [])
-    char_names = [c.get('name') if isinstance(c, dict) else getattr(c, 'name', 'N/A') for c in characters] if characters else []
+    if hasattr(characters, 'characters'):
+        _chars_list = characters.characters
+    elif isinstance(characters, dict):
+        _chars_list = characters.get('characters', [])
+    else:
+        _chars_list = characters if isinstance(characters, list) else []
+
+    char_names = [c.get('name') if isinstance(c, dict) else getattr(c, 'name', 'N/A') for c in _chars_list] if _chars_list else []
 
     user_context = f"현재 세계관: {worldview_id}, " \
                    f"참여 캐릭터: {char_names}"
@@ -209,7 +226,7 @@ def generator_node(state: NarrativeGraphState):
     [핵심 상호작용 원칙 (절대 준수)]
     1. **단일 질문 (Single Question)**: 답변의 마지막에 오직 **단 하나**의 핵심 질문만 던지세요. 질문이 여러 개이면 사용자가 혼란을 느낍니다.
     2. **3~5개 예시 (Numbered Examples)**: 사용자의 답변을 돕기 위해 반드시 **3~5개의 구체적인 답변 예시**를 번호 목록(1. 2. 3...)으로 제공하세요.
-    3. **단계별 집중 (Step-Fidelity)**: 현재 단계({task_name})의 미션에만 집중하세요. {concept_framework}를 구축하는 것이 목표입니다.
+    3. **단계별 집중 (Step-Fidelity)**: 현재 단계({task_name})의 미션에만 집중하세요. {task_name}를 구축하는 것이 목표입니다.
     4. **점진적 복잡성**: {complexity_instruction}
     
     [현재 창작 단계: {task_name}]
@@ -250,16 +267,97 @@ def update_node(state: NarrativeGraphState):
     
     if not story_id: return {"next_node": "response_check"}
 
+    # 0. Load Schemas and Theory
+    data_dir = "./data"
+    
+    def safe_load(func, path, fallback):
+        return func(path) if os.path.exists(path) else fallback
+        
+    # Load schema for characters and worldview
+    schema_path = os.path.join(data_dir, "system", "schema_data_modified.json")
+    schema_data = safe_load(load_json, schema_path, {})
+    char_schema = schema_data.get("definitions", {}).get("character_schema", {})
+    world_schema = schema_data.get("definitions", {}).get("worldview_schema", {})
+    
+    # Load theory milestones
+    theory_type = m_data.get('theory_type') or m_data.get('theory_id') or 'THEORY_PROPP_VOGLER_HYBRID'
+    theory_plot_data = safe_load(load_json, os.path.join(data_dir, "theory", "theory_plot.json"), {})
+    
+    theory_desc = "선택된 이론이 없습니다."
+    if isinstance(theory_plot_data, dict):
+        for t in theory_plot_data.get("plot_theories", []):
+            if t.get("theory_id") == theory_type:
+                ms_list = []
+                for ms in t.get("milestones", []):
+                    if not isinstance(ms, dict): continue
+                    funcs_list = []
+                    for f in ms.get("mapped_functions", []):
+                        if isinstance(f, dict):
+                            funcs_list.append(f"{f.get('function_id', '')}({f.get('name', '')})")
+                        else:
+                            funcs_list.append(str(f))
+                    funcs = ", ".join(funcs_list)
+                    ms_list.append(f"[{ms.get('act')}] {ms.get('title')} - 가능 함수: {funcs}")
+                theory_desc = f"이론명: {t.get('theory_name')}\n" + "\n".join(ms_list)
+                break
+
     # 1. 메타데이터 추출용 프롬프트
-    extract_msg = SystemMessage(content="""
+    extract_msg = SystemMessage(content=f"""
     당신의 임무는 대화 기록을 분석하여 사용자와 에이전트 사이에 '확정'된 스토리 요소를 JSON 형태로 추출하는 것입니다.
     사용자가 "좋아", "그걸로 가자", "응" 등 긍정적인 반응을 보인 내용만 확정된 것으로 간주합니다.
     
-    추출할 필드 (없으면 포함X):
-    - worldview: { "world_id": "세계관이름", "description": "설명", "genre": "장르" }
-    - characters: [ { "name": "이름", "role": "역할", "personality": "성격", "goal": "목표" } ]
+    [참고 구조 및 제약]
+    1. 세계관: 다음 구조를 따르세요.
+       {json.dumps(world_schema.get('properties', {}), ensure_ascii=False)}
+    2. 캐릭터: 다음 구조를 따르세요. 반드시 고유 char_id를 부여할 것.
+       {json.dumps(char_schema.get('properties', {}), ensure_ascii=False)}
+    3. 플롯 (현재 구상된 전체 서사 흐름):
+       다음 이론의 진행 단계를 참고하여 매핑하세요:
+       {theory_desc}
     
-    오직 순수한 JSON만 출력하세요. 마크다운 태그 등을 사용하지 마세요.
+    출력은 반드시 다음 JSON 구조를 엄격히 따라야 합니다:
+    {{
+      "worldview": {{
+        "world_id": "WORLD_01",
+        "genre": "...",
+        "features": {{}},
+        "rules": [ {{"rule_title": "...", "forbidden_events": []}} ]
+      }},
+      "characters": [
+        {{
+          "char_id": "CHAR_01",
+          "name": "...",
+          "char_role": "주인공",
+          "dominant_trait": "...",
+          "forbidden_action": "..."
+        }}
+      ],
+      "plot_data": {{
+        "Plot_Metadata": {{
+          "Story_ID": "{story_id}",
+          "Title": "스토리 제목",
+          "Applied_Structure": "{theory_type}",
+          "Main_Characters": {{ "Protagonist_ID": "...", "Antagonist_ID": "..." }},
+          "Core_Deficiency": {{ "Immediate_Lack": "...", "Fundamental_Lack": "..." }},
+          "Tags": {{ "Topics": [], "Polarity": "Neutral" }},
+          "Validation_Status": {{ "Violation_Rate": "0%", "Is_Valid": true }}
+        }},
+        "Plot_Nodes": [
+          {{
+            "Node_ID": "N_001",
+            "Sequence_Index": 10.0,
+            "Function_ID": "P01",
+            "Content": "해당 단계에서 일어난 구체적 사건 요약",
+            "Involved_Characters": ["CHAR_01"],
+            "Background_World_ID": "WORLD_01",
+            "Validation_Data": {{ "Required_Trait": "...", "Effect_Type": "NONE" }},
+            "Memo": "메모 내용"
+          }}
+        ]
+      }}
+    }}
+    
+    오직 순수한 JSON만 출력하세요. 데이터가 충분하지 않다면 기존 데이터를 유지하거나 빈 항목으로 두세요. 마크다운 언어 태그(```json 등)를 사용하지 마세요. 방금 전 대화에서 새롭게 확정된 진행 단계(단일 노드)만 **새로 추가**할 것.
     """)
     
     try:
@@ -294,9 +392,49 @@ def update_node(state: NarrativeGraphState):
             char_set_data = {"characters": data["characters"]}
             with open(os.path.join(user_path, "created_character.json"), "w", encoding="utf-8") as f:
                 json.dump(char_set_data, f, ensure_ascii=False, indent=2)
-                
+
         # master_data 상태도 업데이트
         new_master = dict(state.get("master_data", {}))
+        
+        # 1. 기존 플롯 데이터 로드
+        existing_plot_data = {"Plot_Metadata": {}, "Plot_Nodes": []}
+        plot_file_path = os.path.join(user_path, "created_plot.json")
+        if os.path.exists(plot_file_path):
+            try:
+                with open(plot_file_path, "r", encoding="utf-8") as f:
+                    existing_plot_data = json.load(f)
+            except Exception: pass
+            
+        if "plot_data" not in existing_plot_data:
+            existing_plot_data = {"Plot_Metadata": {}, "Plot_Nodes": []}
+            
+        if "Plot_Nodes" not in existing_plot_data:
+            existing_plot_data["Plot_Nodes"] = []
+
+        # 2. 새로운 플롯 데이터 병합 (Append)
+        if isinstance(data, dict) and "plot_data" in data:
+            new_plot_data = data["plot_data"]
+            if isinstance(new_plot_data, dict):
+                if "Plot_Metadata" in new_plot_data:
+                    if "Plot_Metadata" not in existing_plot_data: existing_plot_data["Plot_Metadata"] = {}
+                    existing_plot_data["Plot_Metadata"].update(new_plot_data["Plot_Metadata"])
+                    
+                new_nodes = new_plot_data.get("Plot_Nodes", [])
+                if isinstance(new_nodes, list):
+                    for n in new_nodes:
+                        if isinstance(n, dict):
+                            # N_001 버그를 막기 위한 동적 ID 순차 발급
+                            new_idx = len(existing_plot_data["Plot_Nodes"]) + 1
+                            n["Node_ID"] = f"N_{new_idx:03d}"
+                            existing_plot_data["Plot_Nodes"].append(n)
+                            
+            with open(plot_file_path, "w", encoding="utf-8") as f:
+                json.dump(existing_plot_data, f, ensure_ascii=False, indent=2)
+                
+            new_master["plot_nodes"] = existing_plot_data["Plot_Nodes"]
+        else:
+            new_master["plot_nodes"] = existing_plot_data.get("Plot_Nodes", [])
+            
         if "worldview" in data: new_master["worldview"] = data["worldview"]
         if "characters" in data: new_master["characters"] = data["characters"]
         
