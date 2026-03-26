@@ -19,12 +19,156 @@ import datetime
 import json
 from dotenv import load_dotenv
 
+# JSON 키 번역 매핑 사전
+KEY_TRANSLATION = {
+    "world_id": "세계관 ID",
+    "genre": "장르",
+    "description": "설명",
+    "features": "특징",
+    "rules": "규칙",
+    "constants": "상수",
+    "rule_title": "규칙 제목",
+    "forbidden_events": "금지된 사건",
+    "characters": "등장 인물 목록",
+    "char_id": "캐릭터 ID",
+    "name": "이름",
+    "char_role": "역할",
+    "dominant_trait": "주된 특징",
+    "forbidden_action": "금지된 행동",
+    "initial_lack": "초기 결핍",
+    "char_relationship": "인물 관계",
+    "relationship_title": "관계 명칭",
+    "target_char_id": "대상 캐릭터 ID",
+    "emotions": "감정",
+    "Plot_Metadata": "플롯 메타데이터",
+    "Story_ID": "스토리 ID",
+    "Title": "제목",
+    "Applied_Structure": "적용된 구조",
+    "Main_Characters": "주요 캐릭터",
+    "Protagonist_ID": "주인공 ID",
+    "Antagonist_ID": "적대자 ID",
+    "Plot_Nodes": "플롯 노드 목록",
+    "Node_ID": "노드 ID",
+    "Function_ID": "기능(이론) ID",
+    "Content": "내용",
+    "Sequence_Index": "순서 인덱스",
+    "Involved_Characters": "관련 캐릭터",
+    "Background_World_ID": "배경 세계관 ID",
+    "Validation_Data": "검증 데이터",
+    "Required_Trait": "필요 특징",
+    "Effect_Type": "효과 유형",
+    "State_Update": "상태 업데이트",
+    "Causal_Links": "인과 관계",
+    "Causes": "원인",
+    "Effects": "결과",
+    "Memo": "메모",
+    "Plot_Data": "플롯 데이터",
+    "Setting": "배경 설정"
+}
+
+def create_pdf_bytes(wv_data, char_data, plot_data):
+    from fpdf import FPDF
+    from fpdf.enums import XPos, YPos
+    import platform
+
+    def _render_any(pdf, data, indent_level, has_font):
+        if isinstance(data, dict):
+            for key, value in data.items():
+                translated_key = KEY_TRANSLATION.get(key, key)
+                if not isinstance(value, (dict, list)):
+                    pdf.set_x(pdf.l_margin + indent_level * 5)
+                    if has_font:
+                        pdf.set_font("NotoSans", "B", 12)
+                    else:
+                        pdf.set_font("Helvetica", "B", 12)
+                    label = f"{translated_key}: "
+                    label_w = pdf.get_string_width(label) + 2
+                    pdf.cell(label_w, 10, label, new_x=XPos.RIGHT, new_y=YPos.TOP)
+                    if has_font:
+                        pdf.set_font("NotoSans", "", 12)
+                    else:
+                        pdf.set_font("Helvetica", "", 12)
+                    pdf.multi_cell(pdf.epw - (indent_level * 5) - label_w, 10, str(value))
+                else:
+                    pdf.set_x(pdf.l_margin + indent_level * 5)
+                    if has_font:
+                        pdf.set_font("NotoSans", "B", 12)
+                    else:
+                        pdf.set_font("Helvetica", "B", 12)
+                    pdf.cell(pdf.epw - (indent_level * 5), 10, f"{translated_key}:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+                    _render_any(pdf, value, indent_level + 1, has_font)
+        elif isinstance(data, list):
+            for i, item in enumerate(data):
+                pdf.set_x(pdf.l_margin + indent_level * 5)
+                if has_font:
+                    pdf.set_font("NotoSans", "B", 11)
+                else:
+                    pdf.set_font("Helvetica", "B", 11)
+                pdf.cell(pdf.epw - (indent_level * 5), 8, f"- [항목 {i+1}]", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+                _render_any(pdf, item, indent_level + 1, has_font)
+        else:
+            pdf.set_x(pdf.l_margin + indent_level * 5)
+            if has_font:
+                pdf.set_font("NotoSans", "", 11)
+            else:
+                pdf.set_font("Helvetica", "", 11)
+            pdf.multi_cell(pdf.epw - (indent_level * 5), 8, str(data))
+            pdf.ln(1)
+
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        
+        # src.tools.ensure_font()를 사용하여 한글 폰트 확보
+        font_path = ensure_font()
+        has_font = False
+        if font_path and os.path.exists(font_path):
+            try:
+                pdf.add_font("NotoSans", "", font_path)
+                pdf.add_font("NotoSans", "B", font_path)
+                pdf.set_font("NotoSans", "", 12)
+                has_font = True
+            except Exception as e:
+                print(f"Font Load Error: {e}")
+        
+        if not has_font:
+            pdf.set_font("Helvetica", "", 12)
+
+        pdf.set_font("NotoSans" if has_font else "Helvetica", "B", 22)
+        pdf.cell(pdf.epw, 15, "창작 데이터 리포트", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+        pdf.ln(5)
+        pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
+        pdf.ln(10)
+
+        for title, data in [("1. 세계관 및 배경 (Worldview)", wv_data), ("2. 등장 인물 (Characters)", char_data), ("3. 플롯 서사 구조 (Plot Nodes)", plot_data)]:
+            pdf.set_font("NotoSans" if has_font else "Helvetica", "B", 16)
+            pdf.cell(pdf.epw, 12, title, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.ln(2)
+            if data:
+                # 딕셔너리나 리스트가 아니면 변환 시도
+                if isinstance(data, (dict, list)):
+                    d = data
+                elif hasattr(data, "to_dict"):
+                    d = data.to_dict()
+                else:
+                    try: d = vars(data)
+                    except: d = str(data)
+                _render_any(pdf, d, 1, has_font)
+            else:
+                pdf.set_x(pdf.l_margin + 5)
+                pdf.cell(pdf.epw, 10, "데이터 없음", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.ln(8)
+        return bytes(pdf.output(dest='S'))
+    except Exception as e:
+        print(f"PDF Error: {e}")
+        return None
+
 from src.narrative_agent import build_narrative_graph
 from src.visualizer import draw_narrative_graph
 from src.graph_manager import NarrativeGraphManager
 from src.mapper_agent import MapperAgent
 from langchain_core.messages import HumanMessage, AIMessage
-from src.tools import load_worldview, load_characters, load_plot
+from src.tools import load_worldview, load_characters, load_plot, ensure_font
 
 load_dotenv()
 
@@ -442,15 +586,34 @@ def show_chat():
         wv_data = get_master_data('worldview', 'created_worldview.json', load_worldview)
         char_data = get_master_data('characters', 'created_character.json', load_characters)
         plot_data = get_master_data('plot_nodes', 'created_plot.json', load_plot)
+
+        # PDF 리포트 생성 버튼
+        if st.button("📄 리포트 데이터 계산 및 PDF 생성", use_container_width=True):
+            pdf_bytes = create_pdf_bytes(wv_data, char_data, plot_data)
+            if pdf_bytes:
+                st.download_button(
+                    label="💾 PDF 리포트 내려받기",
+                    data=pdf_bytes,
+                    file_name=f"story_report_{story_id}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+            else:
+                st.error("리포트 생성 중 오류가 발생했습니다.")
+        st.divider()
         
         with st.expander("🌍 세계관 및 배경 (Worldview)", expanded=True):
             if wv_data:
+                _genre = wv_data.get('genre', '미정') if isinstance(wv_data, dict) else getattr(wv_data, 'genre', '미정')
+                # description, Setting, features 순서로 시도
+                _desc = ""
                 if isinstance(wv_data, dict):
-                    st.write(f"**장르:** {wv_data.get('genre', '미정')}")
-                    st.write(f"**설명:** {wv_data.get('description', '')}")
+                    _desc = wv_data.get('description') or wv_data.get('Setting') or (wv_data.get('features') if isinstance(wv_data.get('features'), str) else "")
                 else:
-                    st.write(f"**장르:** {getattr(wv_data, 'genre', '미정')}")
-                    st.write(f"**설명:** {getattr(wv_data, 'description', '')}")
+                    _desc = getattr(wv_data, 'description', None) or getattr(wv_data, 'Setting', None)
+                
+                st.write(f"**장르:** {_genre}")
+                st.write(f"**설명:** {_desc or '내용 없음'}")
             else:
                 st.caption("아직 생성된 세계관이 없습니다. 채팅을 시작하면 자동 생성됩니다.")
 
@@ -467,7 +630,16 @@ def show_chat():
                     for c in _chars_list:
                         name = c.get('name') if isinstance(c, dict) else getattr(c, 'name', 'N/A')
                         role = c.get('char_role') if isinstance(c, dict) else getattr(c, 'char_role', 'N/A')
+                        # dominant_trait 또는 personality 표시
+                        trait = ""
+                        if isinstance(c, dict):
+                            trait = c.get('dominant_trait') or c.get('personality', '')
+                        else:
+                            trait = getattr(c, 'dominant_trait', '') or getattr(c, 'personality', '')
+                            
                         st.markdown(f"- **{name}** ({role})")
+                        if trait:
+                            st.caption(f"  특징: {trait}")
                 else:
                     st.caption("아직 생성된 캐릭터가 없습니다. 채팅을 시작하면 자동 생성됩니다.")
             else:

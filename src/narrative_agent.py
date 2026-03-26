@@ -352,6 +352,7 @@ def update_node(state: NarrativeGraphState):
       "worldview": {{
         "world_id": "WORLD_01",
         "genre": "...",
+        "description": "세계관에 대한 핵심 설명 (3~5문장)",
         "features": {{}},
         "rules": [ {{"rule_title": "...", "forbidden_events": []}} ]
       }},
@@ -389,7 +390,7 @@ def update_node(state: NarrativeGraphState):
       }}
     }}
     
-    오직 순수한 JSON만 출력하세요. 데이터가 충분하지 않다면 기존 데이터를 유지하거나 빈 항목으로 두세요. 마크다운 언어 태그(```json 등)를 사용하지 마세요. 방금 전 대화에서 새롭게 확정된 진행 단계(단일 노드)만 **새로 추가**할 것.
+    오직 순수한 JSON만 출력하세요. 데이터가 충분하지 않다면 기존 데이터를 유지하거나 빈 항목으로 두세요. 마크다운 언어 태그(```json 등)를 사용하지 마세요. 방금 전 대화에서 새롭게 확정된 진행 단계(단일 노드)만 **새로 추가**할 것. 'description' 필드와 'features' 필드를 최대한 구체적으로 채워주세요.
     주의: Function_ID에는 임의의 값을 적지 말고, 반드시 위 3. 플롯에 제공된 '가능 함수' 목록에 있는 텍스트(예: P01(부재), STC_OPENING 등)를 그대로 써야 합니다.
     Sequence_Index 부여 규칙: 각 사건은 [마일스톤 순서][함수 순서].0 의 기본값을 가집니다 (예: 2막 3번째 함수면 23.0). 같은 함수의 사건이 여러 개라면 23.1, 23.2 로 증가시키며, 기존 23.8과 23.9 사이에 발생한 중간 사건이라면 23.85 처럼 소수점을 지정하세요.
     """)
@@ -604,7 +605,9 @@ def response_check_node(state: NarrativeGraphState):
     if is_completed and isinstance(mdata, dict):
         if current_section.startswith("Section 01의 step_num:1"):
              wv = mdata.get("worldview", {})
-             if not wv or (isinstance(wv, dict) and not wv.get("description")):
+             # description, features, Setting 중 하나라도 있으면 유효한 것으로 간주 (유연한 검증)
+             description = wv.get("description") or wv.get("Setting") or (wv.get("features") if isinstance(wv.get("features"), dict) and len(wv.get("features")) > 0 else None)
+             if not wv or not description:
                  is_valid_data = False
                  missing_reason = "세계관에 대한 설명이 아직 부족합니다."
         elif current_section.startswith("Section 01의 step_num:3"):
